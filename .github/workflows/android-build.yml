@@ -31,38 +31,40 @@ jobs:
       uses: android-actions/setup-android@v3
       with:
         cmdline-tools-version: 11076708
-        packages: "platform-tools platforms;android-34 build-tools;34.0.0 ndk;25.1.8937393"
+        packages: "platform-tools platforms;android-35 build-tools;35.0.0 ndk;25.1.8937393"
 
     - name: Install React Native Dependencies
       run: npm install --legacy-peer-deps
 
-    - name: Fix React Native 0.73.6 Build Configuration
+    - name: Fix React Native 0.73.6 Gradle Configuration
       run: |
         # Create local.properties
         echo "sdk.dir=$ANDROID_HOME" > android/local.properties
         
-        # Create correct build.gradle for React Native 0.73.6
+        # Remove the problematic react-native-gradle-plugin classpath dependency
+        # React Native 0.73.6 has it built-in and doesn't need external classpath
         cat > android/build.gradle << 'EOF'
         // Top-level build file where you can add configuration options common to all sub-projects/modules.
 
         buildscript {
             ext {
-                buildToolsVersion = "34.0.0"
-                minSdkVersion = 21
-                compileSdkVersion = 34
-                targetSdkVersion = 34
+                buildToolsVersion = "35.0.0"
+                minSdkVersion = 24
+                compileSdkVersion = 35
+                targetSdkVersion = 35
                 ndkVersion = "25.1.8937393"
-                kotlinVersion = "1.8.0"
+                kotlinVersion = "1.8.10"
             }
             repositories {
                 google()
                 mavenCentral()
-                maven { url("$rootDir/../node_modules/react-native/android") }
+                maven { url "https://www.jitpack.io" }
+                maven { url "https://repo1.maven.org/maven2/" }
             }
             dependencies {
-                classpath("com.android.tools.build:gradle:8.4.0")
-                classpath("com.facebook.react:react-native-gradle-plugin")
+                classpath("com.android.tools.build:gradle:8.1.1")
                 classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
+                // NOTE: React Native 0.73.6 has built-in gradle plugin, no classpath needed
             }
         }
 
@@ -70,20 +72,20 @@ jobs:
             repositories {
                 google()
                 mavenCentral()
-                maven { url("$rootDir/../node_modules/react-native/android") }
-                maven { url("$rootDir/../node_modules/jsc-android/dist") }
+                maven { url "https://www.jitpack.io" }
+                maven { url "https://repo1.maven.org/maven2/" }
             }
         }
         EOF
         
-        # Create proper gradle.properties for React Native 0.73.6
+        # Create proper gradle.properties
         cat > android/gradle.properties << 'EOF'
         # Project-wide Gradle settings
         org.gradle.jvmargs=-Xmx4096M -XX:MaxMetaspaceSize=512m
         org.gradle.daemon=false
         org.gradle.parallel=false
         
-        # Android settings for React Native 0.73.6
+        # Android settings
         android.useAndroidX=true
         android.enableJetifier=true
         android.enableR8.fullMode=true
@@ -92,29 +94,9 @@ jobs:
         hermesEnabled=true
         newArchEnabled=false
         
-        # Flipper version for debug builds
+        # Flipper version
         FLIPPER_VERSION=0.182.0
         EOF
-        
-        # Create proper gradle wrapper for RN 0.73.6
-        cat > android/gradle/wrapper/gradle-wrapper.properties << 'EOF'
-        distributionBase=GRADLE_USER_HOME
-        distributionUrl=https\://services.gradle.org/distributions/gradle-8.3-all.zip
-        distributionPath=wrapper/dists
-        zipStorePath=wrapper/dists
-        zipStoreBase=GRADLE_USER_HOME
-        networkTimeout=10000
-        validateDistributionUrl=true
-        EOF
-
-    - name: Install Gradle 8.3 (React Native 0.73.6 Compatible)
-      run: |
-        cd /opt
-        sudo wget -q https://services.gradle.org/distributions/gradle-8.3-bin.zip
-        sudo unzip -q gradle-8.3-bin.zip
-        sudo rm gradle-8.3-bin.zip
-        sudo ln -sf /opt/gradle-8.3/bin/gradle /usr/local/bin/gradle
-        gradle --version
 
     - name: Create Debug Keystore
       working-directory: android/app
@@ -126,27 +108,27 @@ jobs:
             -dname "CN=Android Debug,O=Android,C=US"
         fi
 
-    - name: Test Configuration
+    - name: Test Configuration (No React Native Gradle Plugin Classpath)
       working-directory: android
       run: |
-        echo "Testing React Native 0.73.6 Gradle configuration..."
-        gradle tasks --no-daemon --stacktrace
+        echo "Testing React Native 0.73.6 built-in gradle plugin..."
+        ./gradlew tasks --no-daemon --stacktrace
 
     - name: Clean Build
       working-directory: android
-      run: gradle clean --no-daemon --stacktrace
+      run: ./gradlew clean --no-daemon --stacktrace
 
     - name: Build Debug APK
       working-directory: android
-      run: gradle assembleDebug --no-daemon --stacktrace
+      run: ./gradlew assembleDebug --no-daemon --stacktrace
 
     - name: Build Release APK
       working-directory: android
-      run: gradle assembleRelease --no-daemon --stacktrace
+      run: ./gradlew assembleRelease --no-daemon --stacktrace
 
     - name: Build Release AAB
       working-directory: android
-      run: gradle bundleRelease --no-daemon --stacktrace
+      run: ./gradlew bundleRelease --no-daemon --stacktrace
 
     - name: Verify Build Results
       run: |
@@ -161,32 +143,32 @@ jobs:
     - name: Upload Debug APK
       uses: actions/upload-artifact@v4
       with:
-        name: vyakti-ai-debug-rn073
+        name: vyakti-ai-debug-fixed
         path: android/app/build/outputs/apk/debug/*.apk
         retention-days: 7
 
     - name: Upload Release APK
       uses: actions/upload-artifact@v4
       with:
-        name: vyakti-ai-release-rn073
+        name: vyakti-ai-release-fixed
         path: android/app/build/outputs/apk/release/*.apk
         retention-days: 14
 
     - name: Upload Play Store AAB
       uses: actions/upload-artifact@v4
       with:
-        name: vyakti-ai-playstore-rn073
+        name: vyakti-ai-playstore-fixed
         path: android/app/build/outputs/bundle/release/*.aab
         retention-days: 30
 
     - name: Build Success
       run: |
         echo "✅ Vyakti AI React Native 0.73.6 app built successfully!"
-        echo "✅ Used correct repository configuration for React Native Gradle plugin"
-        echo "✅ Applied Gradle 8.3 + AGP 8.4.0 + Kotlin 1.8.0 compatibility"
+        echo "✅ Removed problematic react-native-gradle-plugin classpath"
+        echo "✅ Used built-in React Native gradle plugin (no external dependency)"
         echo "✅ Generated production-ready APK and AAB files"
         echo ""
         echo "📱 Your complete mobile app is ready:"
-        echo "• vyakti-ai-debug-rn073 (for testing)"
-        echo "• vyakti-ai-release-rn073 (for distribution)"
-        echo "• vyakti-ai-playstore-rn073 (for Google Play Store)"
+        echo "• vyakti-ai-debug-fixed (for testing)"
+        echo "• vyakti-ai-release-fixed (for distribution)"
+        echo "• vyakti-ai-playstore-fixed (for Google Play Store)"
