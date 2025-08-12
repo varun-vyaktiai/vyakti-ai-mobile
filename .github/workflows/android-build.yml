@@ -1,0 +1,95 @@
+name: Build Vyakti AI Android APK
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Setup Java JDK
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+      with:
+        api-level: 35
+        target: google_apis
+        arch: x86_64
+
+    - name: Cache Gradle dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+
+    - name: Install dependencies
+      run: npm install
+      working-directory: ./
+
+    - name: Create local.properties
+      run: |
+        echo "sdk.dir=$ANDROID_HOME" > android/local.properties
+      working-directory: ./
+
+    - name: Make gradlew executable
+      run: chmod +x android/gradlew
+      working-directory: ./
+
+    - name: Clean and Build APK
+      run: |
+        cd android
+        ./gradlew clean
+        ./gradlew assembleRelease --stacktrace
+      working-directory: ./
+
+    - name: Build Android App Bundle (AAB)
+      run: |
+        cd android
+        ./gradlew bundleRelease --stacktrace
+      working-directory: ./
+
+    - name: Upload APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: android-apk
+        path: android/app/build/outputs/apk/release/*.apk
+
+    - name: Upload AAB Artifact (for Google Play Store)
+      uses: actions/upload-artifact@v4
+      with:
+        name: android-aab
+        path: android/app/build/outputs/bundle/release/*.aab
+
+    - name: Generate build summary
+      run: |
+        echo "## Build Summary 📱" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Android APK built successfully" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Android App Bundle (AAB) generated" >> $GITHUB_STEP_SUMMARY
+        echo "- 🎯 Target SDK: 35 (Android 15)" >> $GITHUB_STEP_SUMMARY
+        echo "- 📦 Ready for Google Play Store submission" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Download:" >> $GITHUB_STEP_SUMMARY
+        echo "- Download 'android-apk' artifact for .apk file" >> $GITHUB_STEP_SUMMARY
+        echo "- Download 'android-aab' artifact for Play Store upload" >> $GITHUB_STEP_SUMMARY
