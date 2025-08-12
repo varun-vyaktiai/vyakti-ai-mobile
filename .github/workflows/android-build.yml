@@ -36,12 +36,12 @@ jobs:
     - name: Install React Native Dependencies
       run: npm install --legacy-peer-deps
 
-    - name: Fix Android Build Configuration
+    - name: Fix React Native 0.73.6 Gradle Configuration
       run: |
         # Create local.properties
         echo "sdk.dir=$ANDROID_HOME" > android/local.properties
         
-        # Fix build.gradle with correct React Native Gradle plugin version for RN 0.73.6
+        # Fix build.gradle for React Native 0.73.6 compatibility
         cat > android/build.gradle << 'EOF'
         // Top-level build file where you can add configuration options common to all sub-projects/modules.
 
@@ -53,7 +53,6 @@ jobs:
                 targetSdkVersion = 35
                 ndkVersion = "25.1.8937393"
                 kotlinVersion = "1.8.10"
-                reactNativeVersion = "0.73.6"
             }
             repositories {
                 google()
@@ -63,8 +62,8 @@ jobs:
                 gradlePluginPortal()
             }
             dependencies {
-                classpath("com.android.tools.build:gradle:8.1.1")
-                classpath("com.facebook.react:react-native-gradle-plugin:$reactNativeVersion")
+                classpath("com.android.tools.build:gradle:8.1.4")
+                classpath("com.facebook.react:react-native-gradle-plugin")
                 classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
             }
         }
@@ -82,19 +81,19 @@ jobs:
         }
         EOF
         
-        # Create optimized gradle.properties
+        # Create proper gradle.properties for React Native 0.73.6
         cat > android/gradle.properties << 'EOF'
         # Project-wide Gradle settings
         org.gradle.jvmargs=-Xmx4096M -XX:MaxMetaspaceSize=512m
         org.gradle.daemon=false
         org.gradle.parallel=false
         
-        # Android settings
+        # Android settings for React Native 0.73.6
         android.useAndroidX=true
         android.enableJetifier=true
         android.enableR8.fullMode=true
         
-        # React Native settings (matching package.json version)
+        # React Native settings
         hermesEnabled=true
         newArchEnabled=false
         
@@ -102,13 +101,13 @@ jobs:
         FLIPPER_VERSION=0.182.0
         EOF
 
-    - name: Install Direct Gradle
+    - name: Install Gradle 8.7 (Required for RN 0.73.6)
       run: |
         cd /opt
-        sudo wget -q https://services.gradle.org/distributions/gradle-8.1.1-bin.zip
-        sudo unzip -q gradle-8.1.1-bin.zip
-        sudo rm gradle-8.1.1-bin.zip
-        sudo ln -sf /opt/gradle-8.1.1/bin/gradle /usr/local/bin/gradle
+        sudo wget -q https://services.gradle.org/distributions/gradle-8.7-bin.zip
+        sudo unzip -q gradle-8.7-bin.zip
+        sudo rm gradle-8.7-bin.zip
+        sudo ln -sf /opt/gradle-8.7/bin/gradle /usr/local/bin/gradle
         gradle --version
 
     - name: Create Debug Keystore
@@ -121,11 +120,11 @@ jobs:
             -dname "CN=Android Debug,O=Android,C=US"
         fi
 
-    - name: Test Gradle Configuration
+    - name: Test Configuration
       working-directory: android
       run: |
-        echo "Testing Gradle build configuration..."
-        gradle tasks --no-daemon --stacktrace --info
+        echo "Testing React Native 0.73.6 Gradle configuration..."
+        gradle tasks --no-daemon --stacktrace
 
     - name: Clean Build
       working-directory: android
@@ -145,10 +144,10 @@ jobs:
 
     - name: Verify Build Results
       run: |
-        echo "=== Vyakti AI Build Complete ==="
+        echo "=== Vyakti AI React Native 0.73.6 Build Complete ==="
         find android/app/build/outputs -name "*.apk" -o -name "*.aab" | sort
         echo ""
-        echo "=== File Information ==="
+        echo "=== Build Artifacts ==="
         for file in $(find android/app/build/outputs -name "*.apk" -o -name "*.aab"); do
           echo "$(basename $file): $(du -h "$file" | cut -f1)"
         done
@@ -156,32 +155,32 @@ jobs:
     - name: Upload Debug APK
       uses: actions/upload-artifact@v4
       with:
-        name: vyakti-ai-debug-working
+        name: vyakti-ai-debug-073
         path: android/app/build/outputs/apk/debug/*.apk
         retention-days: 7
 
     - name: Upload Release APK
       uses: actions/upload-artifact@v4
       with:
-        name: vyakti-ai-release-working
+        name: vyakti-ai-release-073
         path: android/app/build/outputs/apk/release/*.apk
         retention-days: 14
 
     - name: Upload Play Store AAB
       uses: actions/upload-artifact@v4
       with:
-        name: vyakti-ai-playstore-working
+        name: vyakti-ai-playstore-073
         path: android/app/build/outputs/bundle/release/*.aab
         retention-days: 30
 
     - name: Build Success
       run: |
-        echo "✅ Vyakti AI React Native app built successfully!"
-        echo "✅ Fixed React Native Gradle plugin version compatibility (0.73.6)"
+        echo "✅ Vyakti AI React Native 0.73.6 app built successfully!"
+        echo "✅ Fixed React Native Gradle plugin compatibility"
+        echo "✅ Used correct Gradle 8.7 version for RN 0.73.6"
         echo "✅ Generated production-ready APK and AAB files"
-        echo "✅ Your complete mobile app with all features is ready"
         echo ""
-        echo "📱 Download from GitHub Actions artifacts:"
-        echo "• vyakti-ai-debug-working (for testing on Android phone)"
-        echo "• vyakti-ai-release-working (for distribution)"
-        echo "• vyakti-ai-playstore-working (AAB for Google Play Store)"
+        echo "📱 Your complete mobile app is ready:"
+        echo "• vyakti-ai-debug-073 (for testing)"
+        echo "• vyakti-ai-release-073 (for distribution)"
+        echo "• vyakti-ai-playstore-073 (for Google Play Store)"
