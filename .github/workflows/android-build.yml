@@ -40,8 +40,11 @@ jobs:
     - name: Create Android local.properties
       run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
 
-    - name: Fix android/build.gradle repositories
+    - name: Fix android/build.gradle repositories and dependencies
       run: |
+        echo "Original android/build.gradle:"
+        cat android/build.gradle
+        
         cat > android/build.gradle << 'EOF'
         buildscript {
             ext {
@@ -58,9 +61,9 @@ jobs:
                 maven { url "https://www.jitpack.io" }
             }
             dependencies {
-                classpath("com.android.tools.build:gradle:8.1.1")
-                classpath("com.facebook.react:react-native-gradle-plugin")
-                classpath("org.jetbrains.kotlin:kotlin-gradle-plugin")
+                classpath 'com.android.tools.build:gradle:8.1.1'
+                classpath 'com.facebook.react:react-native-gradle-plugin'
+                classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
             }
         }
 
@@ -78,7 +81,9 @@ jobs:
             }
         }
         EOF
-        echo "Fixed android/build.gradle with proper repositories"
+        
+        echo "Updated android/build.gradle with proper syntax:"
+        cat android/build.gradle
 
     - name: Fix gradlew shell compatibility and make executable
       run: |
