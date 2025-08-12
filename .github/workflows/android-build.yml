@@ -1,4 +1,4 @@
-name: Build Vyakti AI Android APK
+name: Build Vyakti AI Mobile App
 
 on:
   push:
@@ -10,7 +10,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     
     steps:
     - name: Checkout repository
@@ -27,324 +27,119 @@ jobs:
       with:
         node-version: '18'
 
-    - name: Generate package-lock.json if missing
-      run: |
-        if [ ! -f package-lock.json ]; then
-          echo "Creating missing package-lock.json..."
-          npm install --package-lock-only --legacy-peer-deps
-        fi
-
-    - name: Install npm dependencies
-      run: npm ci --legacy-peer-deps
-
-    - name: Install ImageMagick for icon creation
-      run: sudo apt-get update && sudo apt-get install -y imagemagick
-
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
       with:
         cmdline-tools-version: 11076708
         packages: "platform-tools platforms;android-35 build-tools;35.0.0 ndk;25.1.8937393"
 
+    - name: Navigate to mobile app directory
+      run: cd mobile-app
+
+    - name: Generate package-lock.json if missing
+      run: |
+        cd mobile-app
+        if [ ! -f package-lock.json ]; then
+          echo "Creating missing package-lock.json..."
+          npm install --package-lock-only --legacy-peer-deps
+        fi
+
+    - name: Install React Native dependencies
+      run: |
+        cd mobile-app
+        npm ci --legacy-peer-deps
+
     - name: Create Android local.properties
-      run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
-
-    - name: Backup original files
       run: |
-        cd android
-        cp build.gradle build.gradle.original || echo "No original build.gradle"
-        cp app/build.gradle app/build.gradle.original || echo "No original app build.gradle"
-        cp settings.gradle settings.gradle.original || echo "No original settings.gradle"
-        cp app/src/main/AndroidManifest.xml app/src/main/AndroidManifest.xml.original || echo "No original AndroidManifest.xml"
+        cd mobile-app
+        echo "sdk.dir=$ANDROID_HOME" > android/local.properties
 
-    - name: Remove problematic Gradle files
+    - name: Fix Android Gradle configuration
       run: |
-        cd android
-        rm -f gradlew gradlew.bat settings.gradle
-        rm -rf gradle/ .gradle/
-
-    - name: Create settings.gradle (simple version)
-      run: |
-        cd android
-        cat > settings.gradle << 'SETTINGS_EOF'
-        rootProject.name = "VyaktiAI"
-        include ':app'
-        SETTINGS_EOF
-
-    - name: Create clean root build.gradle (compatible with simple settings)
-      run: |
-        cd android
-        cat > build.gradle << 'EOF'
-        buildscript {
-            ext {
-                buildToolsVersion = "35.0.0"
-                minSdkVersion = 24
-                compileSdkVersion = 35
-                targetSdkVersion = 35
-                ndkVersion = "25.1.8937393"
-                kotlinVersion = "1.8.10"
-            }
-            repositories {
-                google()
-                mavenCentral()
-                gradlePluginPortal()
-            }
-            dependencies {
-                classpath("com.android.tools.build:gradle:8.1.1")
-                classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
-            }
-        }
-
-        allprojects {
-            repositories {
-                google()
-                mavenCentral()
-                maven { url "https://www.jitpack.io" }
-                maven { url "https://oss.sonatype.org/content/repositories/snapshots/" }
-            }
-        }
-        EOF
-
-    - name: Create gradle.properties
-      run: |
-        cd android
-        cat > gradle.properties << 'EOF'
-        org.gradle.jvmargs=-Xmx2048M -Dkotlin.daemon.jvm.options\="-Xmx2048M"
-        android.useAndroidX=true
-        android.enableJetifier=true
-        android.suppressUnsupportedCompileSdk=35
-        EOF
-
-    - name: Create complete Android project structure
-      run: |
-        cd android
-        mkdir -p app/src/main/java/com/vyaktiai/mobile
-        mkdir -p app/src/main/res/values
-        mkdir -p app/src/main/res/layout
-        mkdir -p app/src/main/res/xml
-        mkdir -p app/src/main/res/mipmap-hdpi
-        mkdir -p app/src/main/res/mipmap-mdpi
-        mkdir -p app/src/main/res/mipmap-xhdpi
-        mkdir -p app/src/main/res/mipmap-xxhdpi
-        mkdir -p app/src/main/res/mipmap-xxxhdpi
-
-    - name: Create MainActivity.kt
-      run: |
-        cd android/app/src/main/java/com/vyaktiai/mobile
-        cat > MainActivity.kt << 'ACTIVITY_EOF'
-        package com.vyaktiai.mobile
-
-        import android.os.Bundle
-        import androidx.appcompat.app.AppCompatActivity
-
-        class MainActivity : AppCompatActivity() {
-            override fun onCreate(savedInstanceState: Bundle?) {
-                super.onCreate(savedInstanceState)
-                setContentView(R.layout.activity_main)
-            }
-        }
-        ACTIVITY_EOF
-
-    - name: Create activity_main.xml layout
-      run: |
-        cd android/app/src/main/res/layout
-        cat > activity_main.xml << 'LAYOUT_EOF'
-        <?xml version="1.0" encoding="utf-8"?>
-        <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Vyakti AI"
-                android:textSize="24sp"
-                android:textStyle="bold"
-                android:layout_centerInParent="true" />
-
-        </RelativeLayout>
-        LAYOUT_EOF
-
-    - name: Create strings.xml and basic theme
-      run: |
-        cd android/app/src/main/res/values
-        cat > strings.xml << 'STRINGS_EOF'
-        <resources>
-            <string name="app_name">Vyakti AI</string>
-        </resources>
-        STRINGS_EOF
+        cd mobile-app/android
         
-        cat > themes.xml << 'THEMES_EOF'
-        <resources>
-            <style name="Theme.VyaktiAI" parent="Theme.AppCompat.Light.DarkActionBar">
-                <item name="colorPrimary">#2196F3</item>
-            </style>
-        </resources>
-        THEMES_EOF
-
-    - name: Create app launcher icons
-      run: |
-        cd android/app/src/main/res
-        # Create simple launcher icons using ImageMagick
-        for density in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
-          case $density in
-            mdpi) size=48;;
-            hdpi) size=72;;
-            xhdpi) size=96;;
-            xxhdpi) size=144;;
-            xxxhdpi) size=192;;
-          esac
-          # Create a simple blue circle icon
-          convert -size ${size}x${size} xc:transparent \
-            -fill "#2196F3" -draw "circle $((size/2)),$((size/2)) $((size/2)),10" \
-            -fill white -pointsize $((size/3)) -gravity center -annotate +0+0 "V" \
-            mipmap-${density}/ic_launcher.png || echo "ImageMagick not available, using placeholder"
-          
-          # Fallback if ImageMagick fails - create empty files that Android can handle
-          if [ ! -f "mipmap-${density}/ic_launcher.png" ]; then
-            # Create minimal valid PNG (1x1 transparent pixel)
-            echo -ne '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\rIDATx\x9cc\xf8\x0f\x00\x00\x01\x00\x01\x00\x18\xdd\x8d\xb4\x00\x00\x00\x00IEND\xaeB`\x82' > mipmap-${density}/ic_launcher.png
-          fi
-        done
-
-    - name: Create basic AndroidManifest.xml
-      run: |
-        cd android/app/src/main
-        cat > AndroidManifest.xml << 'MANIFEST_EOF'
-        <?xml version="1.0" encoding="utf-8"?>
-        <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-
-            <uses-permission android:name="android.permission.INTERNET" />
-
-            <application
-                android:allowBackup="true"
-                android:icon="@mipmap/ic_launcher"
-                android:label="@string/app_name"
-                android:theme="@style/Theme.VyaktiAI">
-                <activity
-                    android:name=".MainActivity"
-                    android:exported="true">
-                    <intent-filter>
-                        <action android:name="android.intent.action.MAIN" />
-                        <category android:name="android.intent.category.LAUNCHER" />
-                    </intent-filter>
-                </activity>
-            </application>
-
-        </manifest>
-        MANIFEST_EOF
-
-    - name: Create app build.gradle
-      run: |
-        cd android
-        cat > app/build.gradle << 'EOF'
-        plugins {
-            id 'com.android.application'
-            id 'org.jetbrains.kotlin.android'
-        }
-
-        android {
-            namespace 'com.vyaktiai.mobile'
-            compileSdk 35
-
-            defaultConfig {
-                applicationId "com.vyaktiai.mobile"
-                minSdk 24
-                targetSdk 35
-                versionCode 1
-                versionName "1.0"
-            }
-
-            buildTypes {
-                release {
-                    minifyEnabled false
-                    signingConfig signingConfigs.debug
-                }
-            }
-            
-            compileOptions {
-                sourceCompatibility JavaVersion.VERSION_1_8
-                targetCompatibility JavaVersion.VERSION_1_8
-            }
-            
-            kotlinOptions {
-                jvmTarget = '1.8'
-            }
-        }
-
-        dependencies {
-            implementation 'androidx.core:core-ktx:1.12.0'
-            implementation 'androidx.appcompat:appcompat:1.6.1'
-            implementation 'com.google.android.material:material:1.11.0'
-        }
-        EOF
-
-    - name: Install fresh Gradle 8.1.1
-      run: |
-        curl -L -o gradle.zip https://services.gradle.org/distributions/gradle-8.1.1-bin.zip
-        unzip -q gradle.zip
-        sudo rm -rf /opt/gradle 2>/dev/null || true
-        sudo mv gradle-8.1.1 /opt/gradle
-        sudo chmod +x /opt/gradle/bin/gradle
-
-    - name: Generate Gradle wrapper
-      run: |
-        cd android
-        /opt/gradle/bin/gradle wrapper --gradle-version 8.1.1
+        # Ensure gradle wrapper exists and is executable
+        if [ ! -f gradlew ]; then
+          echo "Creating Gradle wrapper..."
+          curl -L -o gradle.zip https://services.gradle.org/distributions/gradle-8.1.1-bin.zip
+          unzip -q gradle.zip
+          sudo rm -rf /opt/gradle 2>/dev/null || true
+          sudo mv gradle-8.1.1 /opt/gradle
+          sudo chmod +x /opt/gradle/bin/gradle
+          /opt/gradle/bin/gradle wrapper --gradle-version 8.1.1
+        fi
         chmod +x gradlew
+        
+        # Update gradle.properties for React Native
+        echo "" >> gradle.properties
+        echo "# React Native optimization settings" >> gradle.properties  
+        echo "org.gradle.jvmargs=-Xmx4096M -Dkotlin.daemon.jvm.options=\"-Xmx4096M\"" >> gradle.properties
+        echo "android.useAndroidX=true" >> gradle.properties
+        echo "android.enableJetifier=true" >> gradle.properties
+        echo "hermesEnabled=true" >> gradle.properties
 
-    - name: Clean and build all targets
+    - name: Clean previous builds
       run: |
-        cd android
+        cd mobile-app/android
         ./gradlew clean --no-daemon --stacktrace
+
+    - name: Build Debug APK
+      run: |
+        cd mobile-app/android
         ./gradlew assembleDebug --no-daemon --stacktrace
+
+    - name: Build Release APK
+      run: |
+        cd mobile-app/android
         ./gradlew assembleRelease --no-daemon --stacktrace
+
+    - name: Build Release AAB for Play Store
+      run: |
+        cd mobile-app/android
         ./gradlew bundleRelease --no-daemon --stacktrace
 
     - name: Verify build outputs
       run: |
-        echo "Build outputs created:"
-        find android/app/build/outputs -name "*.apk" -o -name "*.aab" | sort
+        echo "=== Vyakti AI Mobile App Build Results ==="
+        find mobile-app/android/app/build/outputs -name "*.apk" -o -name "*.aab" | sort
         echo ""
-        echo "File sizes:"
-        find android/app/build/outputs -name "*.apk" -o -name "*.aab" -exec ls -lh {} \;
+        echo "=== File Details ==="
+        for file in $(find mobile-app/android/app/build/outputs -name "*.apk" -o -name "*.aab"); do
+          echo "File: $(basename $file)"
+          echo "Path: $file"  
+          echo "Size: $(du -h "$file" | cut -f1)"
+          echo "---"
+        done
 
-    - name: Upload Debug APK
+    - name: Upload Debug APK - Vyakti AI
       uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: vyakti-ai-debug-apk
-        path: android/app/build/outputs/apk/debug/*.apk
-        retention-days: 5
+        name: vyakti-ai-mobile-debug-apk
+        path: mobile-app/android/app/build/outputs/apk/debug/*.apk
+        retention-days: 7
 
-    - name: Upload Release APK
+    - name: Upload Release APK - Vyakti AI  
       uses: actions/upload-artifact@v4
       if: success()
       with:
-        name: vyakti-ai-release-apk
-        path: android/app/build/outputs/apk/release/*.apk
-        retention-days: 7
+        name: vyakti-ai-mobile-release-apk
+        path: mobile-app/android/app/build/outputs/apk/release/*.apk
+        retention-days: 14
 
-    - name: Upload Release AAB
+    - name: Upload Release AAB - Play Store Ready
       uses: actions/upload-artifact@v4
       if: success()
       with:
-        name: vyakti-ai-release-aab
-        path: android/app/build/outputs/bundle/release/*.aab
-        retention-days: 7
+        name: vyakti-ai-mobile-aab-playstore
+        path: mobile-app/android/app/build/outputs/bundle/release/*.aab
+        retention-days: 30
 
-    - name: Restore original files
-      if: always()
+    - name: Vyakti AI Mobile Build Success
       run: |
-        cd android
-        mv build.gradle.original build.gradle 2>/dev/null || echo "No original build.gradle to restore"
-        mv app/build.gradle.original app/build.gradle 2>/dev/null || echo "No original app build.gradle to restore"
-        mv settings.gradle.original settings.gradle 2>/dev/null || echo "No original settings.gradle to restore"
-        mv app/src/main/AndroidManifest.xml.original app/src/main/AndroidManifest.xml 2>/dev/null || echo "No original AndroidManifest.xml to restore"
-
-    - name: Build Success
-      run: |
-        echo "✅ Android build completed successfully!"
-        echo "✅ APK and AAB files ready for Google Play Store submission"
-        echo "✅ All original React Native files preserved"
-        echo "✅ Download artifacts from the Actions tab"
+        echo "✅ Vyakti AI mobile app build completed successfully!"
+        echo "✅ Your full-featured React Native app is now built"
+        echo "✅ APK contains all your app screens, features, and functionality"
+        echo "✅ Download artifacts from GitHub Actions tab"
+        echo "✅ Test debug APK on Android phone before Play Store submission"
+        echo "✅ Use AAB file for Google Play Store upload"
