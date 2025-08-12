@@ -33,30 +33,34 @@ jobs:
         cmdline-tools-version: 11076708
         packages: "platform-tools platforms;android-35 build-tools;35.0.0 ndk;25.1.8937393"
 
-    - name: Navigate to mobile app directory
-      run: cd mobile-app
+    - name: Verify mobile app directory exists
+      run: |
+        echo "=== Repository structure ==="
+        ls -la
+        echo "=== Mobile app directory ==="
+        ls -la mobile-app/
+        echo "=== Mobile app package.json ==="
+        cat mobile-app/package.json
 
     - name: Generate package-lock.json if missing
+      working-directory: mobile-app
       run: |
-        cd mobile-app
         if [ ! -f package-lock.json ]; then
           echo "Creating missing package-lock.json..."
           npm install --package-lock-only --legacy-peer-deps
         fi
 
     - name: Install React Native dependencies
-      run: |
-        cd mobile-app
-        npm ci --legacy-peer-deps
+      working-directory: mobile-app
+      run: npm ci --legacy-peer-deps
 
     - name: Create Android local.properties
-      run: |
-        cd mobile-app
-        echo "sdk.dir=$ANDROID_HOME" > android/local.properties
+      working-directory: mobile-app
+      run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
 
     - name: Fix Android Gradle configuration
+      working-directory: mobile-app/android
       run: |
-        cd mobile-app/android
         
         # Ensure gradle wrapper exists and is executable
         if [ ! -f gradlew ]; then
@@ -79,24 +83,20 @@ jobs:
         echo "hermesEnabled=true" >> gradle.properties
 
     - name: Clean previous builds
-      run: |
-        cd mobile-app/android
-        ./gradlew clean --no-daemon --stacktrace
+      working-directory: mobile-app/android
+      run: ./gradlew clean --no-daemon --stacktrace
 
     - name: Build Debug APK
-      run: |
-        cd mobile-app/android
-        ./gradlew assembleDebug --no-daemon --stacktrace
+      working-directory: mobile-app/android
+      run: ./gradlew assembleDebug --no-daemon --stacktrace
 
     - name: Build Release APK
-      run: |
-        cd mobile-app/android
-        ./gradlew assembleRelease --no-daemon --stacktrace
+      working-directory: mobile-app/android
+      run: ./gradlew assembleRelease --no-daemon --stacktrace
 
     - name: Build Release AAB for Play Store
-      run: |
-        cd mobile-app/android
-        ./gradlew bundleRelease --no-daemon --stacktrace
+      working-directory: mobile-app/android
+      run: ./gradlew bundleRelease --no-daemon --stacktrace
 
     - name: Verify build outputs
       run: |
