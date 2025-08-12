@@ -46,53 +46,25 @@ jobs:
     - name: Create Android local.properties
       run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
 
-    - name: Fix gradlew wrapper
+    - name: Remove conflicting Gradle files
       run: |
         cd android
+        rm -f settings.gradle
         rm -f gradlew gradlew.bat
-        rm -rf gradle/wrapper/gradle-wrapper.jar
-        
+        rm -rf gradle/
+        rm -rf .gradle/
+
+    - name: Install Gradle 8.1.1 directly
+      run: |
         curl -L -o gradle.zip https://services.gradle.org/distributions/gradle-8.1.1-bin.zip
         unzip -q gradle.zip
         sudo rm -rf /opt/gradle 2>/dev/null || true
         sudo mv gradle-8.1.1 /opt/gradle
         sudo chmod +x /opt/gradle/bin/gradle
-        
-        /opt/gradle/bin/gradle wrapper --gradle-version 8.1.1
-        chmod +x gradlew
+        export PATH="/opt/gradle/bin:$PATH"
+        gradle --version
 
-    - name: Create settings.gradle
-      run: |
-        cd android
-        tee settings.gradle > /dev/null <<EOF
-        pluginManagement {
-            repositories {
-                google()
-                mavenCentral()
-                gradlePluginPortal()
-                maven { url "https://plugins.gradle.org/m2/" }
-            }
-        }
-        dependencyResolutionManagement {
-            repositoriesMode.set(RepositoriesMode.PREFER_PROJECT)
-            repositories {
-                google()
-                mavenCentral()
-                maven { url "https://www.jitpack.io" }
-                maven { url "https://repo1.maven.org/maven2/" }
-                jcenter() {
-                    content {
-                        includeModule("com.yqritc", "Android-ScalableVideoView")
-                    }
-                }
-            }
-        }
-        
-        rootProject.name = 'VyaktiAI'
-        include ':app'
-        EOF
-
-    - name: Create build.gradle
+    - name: Create minimal working build.gradle
       run: |
         cd android
         tee build.gradle > /dev/null <<EOF
@@ -111,6 +83,7 @@ jobs:
                 gradlePluginPortal()
                 maven { url "https://plugins.gradle.org/m2/" }
                 maven { url "https://repo1.maven.org/maven2/" }
+                maven { url "https://www.jitpack.io" }
             }
             dependencies {
                 classpath("com.android.tools.build:gradle:8.1.1")
@@ -118,16 +91,44 @@ jobs:
                 classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:\$kotlinVersion")
             }
         }
-        
+
+        allprojects {
+            repositories {
+                google()
+                mavenCentral()
+                gradlePluginPortal()
+                maven { url "https://plugins.gradle.org/m2/" }
+                maven { url "https://repo1.maven.org/maven2/" }
+                maven { url "https://www.jitpack.io" }
+                jcenter() {
+                    content {
+                        includeModule("com.yqritc", "Android-ScalableVideoView")
+                    }
+                }
+            }
+        }
+
         apply plugin: "com.facebook.react.rootproject"
         EOF
 
-    - name: Clear cache and validate
+    - name: Create simple settings.gradle
       run: |
         cd android
-        rm -rf ~/.gradle/caches/
-        rm -rf .gradle/
-        ./gradlew dependencies --configuration classpath --refresh-dependencies
+        echo "rootProject.name = 'VyaktiAI'" > settings.gradle
+        echo "include ':app'" >> settings.gradle
+
+    - name: Generate fresh Gradle wrapper
+      run: |
+        cd android
+        /opt/gradle/bin/gradle wrapper --gradle-version 8.1.1
+        chmod +x gradlew
+
+    - name: Test Gradle configuration
+      run: |
+        cd android
+        export PATH="/opt/gradle/bin:$PATH"
+        ./gradlew --version
+        ./gradlew tasks
 
     - name: Clean project
       run: |
@@ -161,4 +162,4 @@ jobs:
     - name: Build Success Summary
       run: |
         echo "Build completed successfully!"
-        echo "Ready for Google Play Store submission"
+        echo "APK and AAB ready for Google Play Store submission"
