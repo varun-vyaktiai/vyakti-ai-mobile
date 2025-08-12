@@ -1,17 +1,17 @@
- name: Build Vyakti AI Android APK
+name: Build Vyakti AI Android APK
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 60
-
+    
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
@@ -34,7 +34,7 @@ jobs:
           npm install --package-lock-only --legacy-peer-deps
         fi
 
-    - name: Install npm dependencies
+    - name: Install npm dependencies  
       run: npm ci --legacy-peer-deps
 
     - name: Setup Android SDK
@@ -46,7 +46,7 @@ jobs:
     - name: Create Android local.properties
       run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
 
-    - name: Fix gradlew wrapper corruption
+    - name: Fix gradlew wrapper
       run: |
         cd android
         rm -f gradlew gradlew.bat
@@ -61,10 +61,10 @@ jobs:
         /opt/gradle/bin/gradle wrapper --gradle-version 8.1.1
         chmod +x gradlew
 
-    - name: Create settings.gradle with repository management
+    - name: Create settings.gradle
       run: |
         cd android
-        cat > settings.gradle << 'EOF'
+        tee settings.gradle > /dev/null <<EOF
         pluginManagement {
             repositories {
                 google()
@@ -87,15 +87,15 @@ jobs:
                 }
             }
         }
-
+        
         rootProject.name = 'VyaktiAI'
         include ':app'
         EOF
 
-    - name: Fix build.gradle with proper repository configuration
+    - name: Create build.gradle
       run: |
         cd android
-        cat > build.gradle << 'EOF'
+        tee build.gradle > /dev/null <<EOF
         buildscript {
             ext {
                 buildToolsVersion = "35.0.0"
@@ -115,52 +115,34 @@ jobs:
             dependencies {
                 classpath("com.android.tools.build:gradle:8.1.1")
                 classpath("com.facebook.react:react-native-gradle-plugin")
-                classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
+                classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:\$kotlinVersion")
             }
         }
-
+        
         apply plugin: "com.facebook.react.rootproject"
         EOF
 
-    - name: Validate Gradle configuration and clear cache
+    - name: Clear cache and validate
       run: |
         cd android
-        echo "Clearing Gradle cache..."
         rm -rf ~/.gradle/caches/
         rm -rf .gradle/
-        
-        echo "Testing Gradle dependency resolution..."
         ./gradlew dependencies --configuration classpath --refresh-dependencies
 
-    - name: Clean project before build
+    - name: Clean project
       run: |
         cd android
         ./gradlew clean --no-daemon --stacktrace
 
-    - name: Build Release APK with detailed logging
+    - name: Build Release APK
       run: |
         cd android
-        ./gradlew assembleRelease --no-daemon --stacktrace --info --warning-mode all
+        ./gradlew assembleRelease --no-daemon --stacktrace
 
     - name: Build Release AAB
       run: |
         cd android
         ./gradlew bundleRelease --no-daemon --stacktrace
-
-    - name: Verify build outputs
-      run: |
-        ls -la android/app/build/outputs/apk/release/
-        ls -la android/app/build/outputs/bundle/release/
-        
-        if [ ! -f android/app/build/outputs/apk/release/app-release.apk ]; then
-          echo "ERROR: APK not found!"
-          exit 1
-        fi
-        
-        if [ ! -f android/app/build/outputs/bundle/release/app-release.aab ]; then
-          echo "ERROR: AAB not found!"
-          exit 1
-        fi
 
     - name: Upload Release APK
       uses: actions/upload-artifact@v4
@@ -179,11 +161,4 @@ jobs:
     - name: Build Success Summary
       run: |
         echo "Build completed successfully!"
-        echo "APK: android/app/build/outputs/apk/release/app-release.apk"
-        echo "AAB: android/app/build/outputs/bundle/release/app-release.aab"
         echo "Ready for Google Play Store submission"
-        
-        APK_SIZE=$(du -h android/app/build/outputs/apk/release/app-release.apk | cut -f1)
-        AAB_SIZE=$(du -h android/app/build/outputs/bundle/release/app-release.aab | cut -f1)
-        echo "APK Size: $APK_SIZE"
-        echo "AAB Size: $AAB_SIZE"
