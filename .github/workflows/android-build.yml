@@ -13,7 +13,7 @@ jobs:
     timeout-minutes: 90
     
     steps:
-    - name: Checkout Vyakti AI Repository
+    - name: Checkout Repository
       uses: actions/checkout@v4
 
     - name: Setup Java 17
@@ -26,7 +26,6 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '18'
-        cache: 'npm'
 
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
@@ -34,39 +33,35 @@ jobs:
         cmdline-tools-version: 11076708
         packages: "platform-tools platforms;android-35 build-tools;35.0.0 ndk;25.1.8937393"
 
-    - name: Verify Vyakti AI Project Structure
+    - name: Verify Project Structure
       run: |
-        echo "=== Vyakti AI React Native Project ==="
-        echo "App.js exists: $(test -f App.js && echo 'YES' || echo 'NO')"
-        echo "App.tsx exists: $(test -f App.tsx && echo 'YES' || echo 'NO')"
-        echo "Android directory: $(test -d android && echo 'YES' || echo 'NO')"
-        echo "Package.json: $(test -f package.json && echo 'YES' || echo 'NO')"
+        echo "=== Vyakti AI Project Verification ==="
+        ls -la
         echo ""
-        echo "=== Dependencies from package.json ==="
-        grep -E '"react-native|@react-native' package.json || echo "No React Native dependencies found"
+        echo "Package.json exists: $(test -f package.json && echo 'YES' || echo 'NO')"
+        echo "Android directory: $(test -d android && echo 'YES' || echo 'NO')"
+        echo "App.js/App.tsx: $(test -f App.js -o -f App.tsx && echo 'YES' || echo 'NO')"
 
-    - name: Install Dependencies
+    - name: Install React Native Dependencies
       run: |
-        echo "Installing Vyakti AI React Native dependencies..."
-        if [ ! -f package-lock.json ]; then
-          npm install --package-lock-only --legacy-peer-deps
-        fi
-        npm ci --legacy-peer-deps
+        echo "Installing dependencies with npm install..."
+        npm install --legacy-peer-deps
+        echo "Dependencies installed successfully"
 
-    - name: Create Android local.properties
-      run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
+    - name: Create Android Configuration
+      run: |
+        echo "sdk.dir=$ANDROID_HOME" > android/local.properties
+        echo "Android local.properties created"
 
     - name: Setup Gradle Wrapper
       run: |
         cd android
         chmod +x gradlew
         
-        # Create gradle wrapper directory
         mkdir -p gradle/wrapper
         
-        # Download gradle-wrapper.jar if missing
+        # Download gradle-wrapper.jar
         if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
-          echo "Downloading gradle-wrapper.jar..."
           curl -L -o gradle/wrapper/gradle-wrapper.jar https://github.com/gradle/gradle/raw/v8.1.1/gradle/wrapper/gradle-wrapper.jar
         fi
         
@@ -79,102 +74,69 @@ jobs:
         zipStoreBase=GRADLE_USER_HOME
         zipStorePath=wrapper/dists
         EOF
-        
-        echo "Gradle wrapper setup complete"
 
-    - name: Configure Gradle for React Native
+    - name: Configure Gradle Properties
       run: |
         cd android
         echo "" >> gradle.properties
-        echo "# Vyakti AI React Native Build Configuration" >> gradle.properties
-        echo "org.gradle.jvmargs=-Xmx4096M -XX:MaxMetaspaceSize=512m -XX:+HeapDumpOnOutOfMemoryError" >> gradle.properties
+        echo "# React Native Build Configuration" >> gradle.properties
+        echo "org.gradle.jvmargs=-Xmx4096M -XX:MaxMetaspaceSize=512m" >> gradle.properties
         echo "android.useAndroidX=true" >> gradle.properties
         echo "android.enableJetifier=true" >> gradle.properties
         echo "hermesEnabled=true" >> gradle.properties
         echo "org.gradle.daemon=false" >> gradle.properties
-        echo "org.gradle.configureondemand=true" >> gradle.properties
-        echo "org.gradle.parallel=false" >> gradle.properties
 
-    - name: Test Gradle Setup
+    - name: Test Gradle
       working-directory: android
       run: |
         echo "Testing Gradle wrapper..."
         ./gradlew --version
-        echo "✅ Gradle is ready for Vyakti AI build"
 
-    - name: Clean Previous Build
+    - name: Clean Build
       working-directory: android
       run: ./gradlew clean --no-daemon --stacktrace
 
     - name: Build Debug APK
       working-directory: android
-      run: |
-        echo "Building Vyakti AI Debug APK..."
-        ./gradlew assembleDebug --no-daemon --stacktrace --info
+      run: ./gradlew assembleDebug --no-daemon --stacktrace
 
     - name: Build Release APK
       working-directory: android
-      run: |
-        echo "Building Vyakti AI Release APK..."
-        ./gradlew assembleRelease --no-daemon --stacktrace --info
+      run: ./gradlew assembleRelease --no-daemon --stacktrace
 
-    - name: Build Play Store Bundle (AAB)
+    - name: Build Release AAB
       working-directory: android
-      run: |
-        echo "Building Vyakti AI Play Store Bundle..."
-        ./gradlew bundleRelease --no-daemon --stacktrace --info
+      run: ./gradlew bundleRelease --no-daemon --stacktrace
 
-    - name: Verify Vyakti AI Build Outputs
+    - name: List Build Outputs
       run: |
-        echo "=== Vyakti AI Build Results ==="
+        echo "=== Build Results ==="
         find android/app/build/outputs -name "*.apk" -o -name "*.aab" | sort
-        echo ""
-        echo "=== File Details ==="
-        for file in $(find android/app/build/outputs -name "*.apk" -o -name "*.aab"); do
-          echo "File: $(basename $file)"
-          echo "Size: $(du -h "$file" | cut -f1)"
-          echo "Path: $file"
-          echo "---"
-        done
 
-    - name: Upload Vyakti AI Debug APK
+    - name: Upload Debug APK
       uses: actions/upload-artifact@v4
-      if: always()
       with:
-        name: vyakti-ai-debug-apk
+        name: vyakti-ai-debug
         path: android/app/build/outputs/apk/debug/*.apk
         retention-days: 7
 
-    - name: Upload Vyakti AI Release APK
+    - name: Upload Release APK
       uses: actions/upload-artifact@v4
-      if: success()
       with:
-        name: vyakti-ai-release-apk
+        name: vyakti-ai-release
         path: android/app/build/outputs/apk/release/*.apk
         retention-days: 14
 
-    - name: Upload Vyakti AI Play Store Bundle
+    - name: Upload Play Store AAB
       uses: actions/upload-artifact@v4
-      if: success()
       with:
-        name: vyakti-ai-playstore-bundle
+        name: vyakti-ai-playstore
         path: android/app/build/outputs/bundle/release/*.aab
         retention-days: 30
 
-    - name: Vyakti AI Build Success
+    - name: Success Summary
       run: |
-        echo "🎉 Vyakti AI React Native app built successfully!"
-        echo ""
-        echo "✅ Complete mobile application with all features:"
-        echo "   - Avatar selection screen"
-        echo "   - Multilingual chat interface" 
-        echo "   - Voice scoring functionality"
-        echo "   - All navigation and screens"
-        echo "   - Production-ready branding"
-        echo ""
-        echo "📱 Next Steps:"
-        echo "   1. Download 'vyakti-ai-debug-apk' from GitHub Actions artifacts"
-        echo "   2. Install on Android phone for testing"
-        echo "   3. Use 'vyakti-ai-playstore-bundle' (AAB) for Play Store submission"
-        echo ""
-        echo "🚀 Your complete Vyakti AI mobile app is ready!"
+        echo "✅ Vyakti AI React Native app built successfully!"
+        echo "✅ Debug APK ready for testing"
+        echo "✅ Release APK ready for distribution" 
+        echo "✅ AAB ready for Play Store submission"
