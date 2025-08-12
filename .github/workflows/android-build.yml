@@ -35,50 +35,15 @@ jobs:
         $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
     - name: Install Node dependencies
-      run: npm install --legacy-peer-deps
-
-    - name: Create local.properties
-      run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
-
-    - name: Fix Android build.gradle and settings.gradle
       run: |
-        # Fix build.gradle
-        cat > android/build.gradle << 'EOF'
-        buildscript {
-            ext {
-                buildToolsVersion = "35.0.0"
-                minSdkVersion = 21
-                compileSdkVersion = 35
-                targetSdkVersion = 35
-                ndkVersion = "26.1.10909125"
-                kotlinVersion = "1.8.10"
-            }
-            repositories {
-                google()
-                mavenCentral()
-                maven { url "https://www.jitpack.io" }
-            }
-            dependencies {
-                classpath("com.android.tools.build:gradle:8.1.1")
-                classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.8.10")
-            }
-        }
+        cd mobile-app
+        npm install --legacy-peer-deps
 
-        allprojects {
-            repositories {
-                google()
-                mavenCentral()
-                maven { url "https://www.jitpack.io" }
-                maven { url "https://maven.google.com" }
-                maven {
-                    // All of React Native (JS, Obj-C sources, Android binaries) is installed from npm
-                    url("$rootDir/../node_modules/react-native/android")
-                }
-            }
-        }
-        EOF
+    - name: Create missing Android configuration files
+      run: |
+        cd mobile-app
+        echo "sdk.dir=$ANDROID_HOME" > android/local.properties
         
-        # Fix settings.gradle for React Native 0.73
         cat > android/settings.gradle << 'EOF'
         pluginManagement {
             repositories {
@@ -87,7 +52,6 @@ jobs:
                 gradlePluginPortal()
             }
         }
-
         dependencyResolutionManagement {
             repositoriesMode.set(RepositoriesMode.PREFER_PROJECT)
             repositories {
@@ -97,8 +61,11 @@ jobs:
             }
         }
 
+        rootProject.name = 'VyaktiAI'
         include ':app'
         includeBuild('../node_modules/@react-native/gradle-plugin')
+
+        apply from: file("../node_modules/@react-native-community/cli-platform-android/native_modules.gradle"); applyNativeModulesSettingsGradle(settings)
 
         if (settings.hasProperty("newArchEnabled") && settings.newArchEnabled == "true") {
             include(":ReactAndroid")
@@ -107,103 +74,111 @@ jobs:
             project(":ReactAndroid:hermes-engine").projectDir = file("../node_modules/react-native/ReactAndroid/hermes-engine")
         }
         EOF
-        
-        # Fix app/build.gradle
-        cat > android/app/build.gradle << 'EOF'
-        apply plugin: "com.android.application"
-        apply plugin: "com.facebook.react"
 
-        android {
-            compileSdkVersion rootProject.ext.compileSdkVersion
-
-            compileOptions {
-                sourceCompatibility JavaVersion.VERSION_1_8
-                targetCompatibility JavaVersion.VERSION_1_8
+    - name: Fix Android root build.gradle for React Native 0.73.6
+      run: |
+        cd mobile-app
+        cat > android/build.gradle << 'EOF'
+        buildscript {
+            ext {
+                buildToolsVersion = "35.0.0"
+                minSdkVersion = 24
+                compileSdkVersion = 35
+                targetSdkVersion = 35
+                ndkVersion = "25.1.8937393"
+                kotlinVersion = "1.8.10"
             }
-
-            defaultConfig {
-                applicationId "com.vyaktiai"
-                minSdkVersion rootProject.ext.minSdkVersion
-                targetSdkVersion rootProject.ext.targetSdkVersion
-                versionCode 1
-                versionName "1.0"
+            repositories {
+                google()
+                mavenCentral()
+                maven { url "https://www.jitpack.io" }
             }
-
-            signingConfigs {
-                debug {
-                    storeFile file('debug.keystore')
-                    storePassword 'android'
-                    keyAlias 'androiddebugkey'
-                    keyPassword 'android'
-                }
-                release {
-                    // You need to set up your own keystore for release builds
-                    storeFile file('debug.keystore')
-                    storePassword 'android'
-                    keyAlias 'androiddebugkey'
-                    keyPassword 'android'
-                }
-            }
-
-            buildTypes {
-                debug {
-                    signingConfig signingConfigs.debug
-                }
-                release {
-                    signingConfig signingConfigs.release
-                    minifyEnabled false
-                    proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
-                }
+            dependencies {
+                classpath("com.android.tools.build:gradle:8.1.1")
+                classpath("com.facebook.react:react-native-gradle-plugin")
+                classpath("org.jetbrains.kotlin:kotlin-gradle-plugin")
             }
         }
 
-        dependencies {
-            implementation "com.facebook.react:react-native:+"
-            implementation "androidx.swiperefreshlayout:swiperefreshlayout:1.0.0"
-            
-            debugImplementation("com.facebook.flipper:flipper:0.125.0") {
-                exclude group:'com.facebook.fbjni'
-            }
-            debugImplementation("com.facebook.flipper:flipper-network-plugin:0.125.0") {
-                exclude group:'com.facebook.fbjni'
-            }
-            debugImplementation("com.facebook.flipper:flipper-fresco-plugin:0.125.0") {
-                exclude group:'com.facebook.fbjni'
+        apply plugin: "com.facebook.react.rootproject"
+
+        allprojects {
+            repositories {
+                google()
+                mavenCentral()
+                maven { url "https://www.jitpack.io" }
+                maven { url "https://maven.google.com" }
+                maven {
+                    url("$rootDir/../node_modules/react-native/android")
+                }
             }
         }
+        EOF
 
-        apply from: file("../../node_modules/@react-native-community/cli-platform-android/native_modules.gradle"); applyNativeModulesAppBuildGradle(project)
+    - name: Create missing Android keystore
+      run: |
+        cd mobile-app/android/app
+        if [ ! -f debug.keystore ]; then
+            keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "C=US, O=Android, CN=Android Debug"
+        fi
+
+    - name: Create gradle.properties for React Native 0.73.6
+      run: |
+        cd mobile-app
+        cat > android/gradle.properties << 'EOF'
+        org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m
+        android.useAndroidX=true
+        android.enableJetifier=true
+        FLIPPER_VERSION=0.182.0
+        reactNativeArchitectures=armeabi-v7a,arm64-v8a,x86,x86_64
+        newArchEnabled=false
+        hermesEnabled=true
+        android.experimental.legacyTransform.forceNonIncremental=true
+        android.nonTransitiveRClass=true
+        android.enableR8.fullMode=true
+        org.gradle.parallel=true
+        org.gradle.configureondemand=true
+        org.gradle.daemon=true
         EOF
 
     - name: Setup Gradle Wrapper
       run: |
-        cd android
-        # Install Gradle first
+        cd mobile-app/android
         wget https://services.gradle.org/distributions/gradle-8.0-bin.zip
         unzip -q gradle-8.0-bin.zip
         export PATH=$PWD/gradle-8.0/bin:$PATH
-        # Generate wrapper
-        gradle wrapper --gradle-version=8.0
+        if [ ! -f gradlew ]; then
+            gradle wrapper --gradle-version=8.0
+        fi
         chmod +x gradlew
 
-    - name: Build APK
+    - name: Clean and Build APK
       run: |
-        cd android
-        bash gradlew clean assembleRelease --stacktrace
+        cd mobile-app/android
+        ./gradlew clean
+        ./gradlew assembleRelease --stacktrace --info
 
     - name: Build AAB
       run: |
-        cd android
-        bash gradlew bundleRelease --stacktrace
+        cd mobile-app/android
+        ./gradlew bundleRelease --stacktrace
 
-    - name: Upload APK
+    - name: Upload APK Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: app-release-apk
-        path: android/app/build/outputs/apk/release/app-release.apk
+        name: android-apk-artifacts
+        path: |
+          mobile-app/android/app/build/outputs/apk/release/*.apk
 
-    - name: Upload AAB
+    - name: Upload AAB Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: app-release-aab
-        path: android/app/build/outputs/bundle/release/app-release.aab
+        name: android-aab-artifact
+        path: mobile-app/android/app/build/outputs/bundle/release/app-release.aab
+
+    - name: List build outputs
+      run: |
+        echo "=== APK Files ==="
+        find mobile-app/android/app/build/outputs/apk/release -name "*.apk" -exec ls -la {} \;
+        echo "=== AAB Files ==="
+        find mobile-app/android/app/build/outputs/bundle/release -name "*.aab" -exec ls -la {} \;
