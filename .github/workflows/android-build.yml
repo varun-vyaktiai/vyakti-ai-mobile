@@ -117,12 +117,12 @@ jobs:
         reactNativeArchitectures=armeabi-v7a,arm64-v8a,x86,x86_64
         newArchEnabled=false
         hermesEnabled=true
-        android.experimental.legacyTransform.forceNonIncremental=true
         android.nonTransitiveRClass=true
         android.enableR8.fullMode=true
         org.gradle.parallel=true
         org.gradle.configureondemand=true
         org.gradle.daemon=true
+        # Remove experimental legacy transform that causes warnings
         EOF
 
     - name: Create debug keystore
@@ -150,7 +150,28 @@ jobs:
 
     - name: Fix React Native 0.73.6 entryFile property
       run: |
-        sed -i 's/entryFile = "index.js"/entryFile = file("..\/index.js")/' android/app/build.gradle
+        # Create a fixed build.gradle with proper entryFile syntax
+        cat > android/app/build.gradle.tmp << 'EOF'
+        apply plugin: "com.android.application"
+        apply plugin: "org.jetbrains.kotlin.android"
+        apply plugin: "com.facebook.react"
+
+        /**
+         * This is the configuration block to customize your React Native Android app.
+         */
+        react {
+            entryFile = file("../index.js")
+            reactNativeDir = rootProject.file("../node_modules/react-native")
+            codegenDir = rootProject.file("../node_modules/@react-native/codegen")
+            cliFile = rootProject.file("../node_modules/@react-native/cli/build/bin.js")
+            debuggableVariants = ["liveReload", "nightly", "staging"]
+        }
+        EOF
+        
+        # Append the rest of the original file after line 14
+        tail -n +15 android/app/build.gradle >> android/app/build.gradle.tmp
+        mv android/app/build.gradle.tmp android/app/build.gradle
+        
         echo "=== Fixed build.gradle entry file ==="
         head -15 android/app/build.gradle
 
