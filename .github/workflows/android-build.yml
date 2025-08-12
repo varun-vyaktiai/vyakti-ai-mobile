@@ -38,15 +38,17 @@ jobs:
     - name: Create local.properties
       run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
 
-    - name: Download gradle-wrapper.jar
+    - name: Completely rebuild Gradle wrapper
       run: |
         cd android
+        
+        # Create wrapper directory
         mkdir -p gradle/wrapper
-        curl -L -o gradle/wrapper/gradle-wrapper.jar https://raw.githubusercontent.com/gradle/gradle/v8.1.1/gradle/wrapper/gradle-wrapper.jar
-
-    - name: Create working gradle-wrapper.properties
-      run: |
-        cd android
+        
+        # Download gradle-wrapper.jar
+        curl -L -o gradle/wrapper/gradle-wrapper.jar https://services.gradle.org/distributions/gradle-8.1.1-wrapper.jar
+        
+        # Create gradle-wrapper.properties
         cat > gradle/wrapper/gradle-wrapper.properties << 'EOF'
         distributionBase=GRADLE_USER_HOME
         distributionPath=wrapper/dists
@@ -54,11 +56,19 @@ jobs:
         zipStoreBase=GRADLE_USER_HOME
         zipStorePath=wrapper/dists
         EOF
+        
+        # Create simple gradlew script
+        cat > gradlew << 'EOF'
+        #!/bin/sh
+        GRADLE_APP_HOME="$(cd "$(dirname "$0")" && pwd)"
+        exec java -cp "$GRADLE_APP_HOME/gradle/wrapper/gradle-wrapper.jar" org.gradle.wrapper.GradleWrapperMain "$@"
+        EOF
+        
+        chmod +x gradlew
+        
+        echo "Gradle wrapper rebuilt successfully"
 
-    - name: Make gradlew executable
-      run: chmod +x android/gradlew
-
-    - name: Test gradlew
+    - name: Test Gradle wrapper
       run: cd android && ./gradlew --version
 
     - name: Clean project
