@@ -38,14 +38,27 @@ jobs:
     - name: Create local.properties
       run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
 
-    - name: Fix gradlew script
+    - name: Download gradle-wrapper.jar
       run: |
         cd android
-        curl -s -o gradlew https://raw.githubusercontent.com/gradle/gradle/v8.1.1/gradle/wrapper/gradlew
-        chmod +x gradlew
-        echo "Gradlew fixed and made executable"
+        mkdir -p gradle/wrapper
+        curl -L -o gradle/wrapper/gradle-wrapper.jar https://raw.githubusercontent.com/gradle/gradle/v8.1.1/gradle/wrapper/gradle-wrapper.jar
 
-    - name: Verify gradlew works
+    - name: Create working gradle-wrapper.properties
+      run: |
+        cd android
+        cat > gradle/wrapper/gradle-wrapper.properties << 'EOF'
+        distributionBase=GRADLE_USER_HOME
+        distributionPath=wrapper/dists
+        distributionUrl=https\://services.gradle.org/distributions/gradle-8.1.1-bin.zip
+        zipStoreBase=GRADLE_USER_HOME
+        zipStorePath=wrapper/dists
+        EOF
+
+    - name: Make gradlew executable
+      run: chmod +x android/gradlew
+
+    - name: Test gradlew
       run: cd android && ./gradlew --version
 
     - name: Clean project
@@ -73,7 +86,7 @@ jobs:
 
     - name: Build Summary
       run: |
-        echo "Build completed successfully!"
-        echo "APK: android/app/build/outputs/apk/release/app-release.apk"
-        echo "AAB: android/app/build/outputs/bundle/release/app-release.aab"
-        echo "Ready for Google Play Store submission"
+        echo "🎉 Build completed successfully!"
+        echo "📱 APK: android/app/build/outputs/apk/release/app-release.apk"
+        echo "📦 AAB: android/app/build/outputs/bundle/release/app-release.aab"
+        echo "✅ Ready for Google Play Store submission"
