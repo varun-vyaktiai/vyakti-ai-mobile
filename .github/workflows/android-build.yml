@@ -62,8 +62,8 @@ jobs:
             }
             dependencies {
                 classpath 'com.android.tools.build:gradle:8.1.1'
-                classpath 'com.facebook.react:react-native-gradle-plugin'
-                classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
+                classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.8.10'
+                // Note: React Native gradle plugin is loaded via settings.gradle
             }
         }
 
@@ -102,6 +102,32 @@ jobs:
         
         echo "After fix:"
         head -15 android/app/build.gradle
+
+    - name: Create proper settings.gradle for React Native 0.73.6
+      run: |
+        cat > android/settings.gradle << 'EOF'
+        pluginManagement {
+            repositories {
+                google()
+                mavenCentral()
+                gradlePluginPortal()
+            }
+        }
+        dependencyResolutionManagement {
+            repositoriesMode.set(RepositoriesMode.PREFER_PROJECT)
+            repositories {
+                google()
+                mavenCentral()
+                maven { url "https://www.jitpack.io" }
+            }
+        }
+
+        rootProject.name = 'VyaktiAI'
+        include ':app'
+        includeBuild('../node_modules/@react-native/gradle-plugin')
+
+        apply from: file("../node_modules/@react-native-community/cli-platform-android/native_modules.gradle"); applyNativeModulesSettingsGradle(settings)
+        EOF
 
     - name: Create gradle wrapper if missing
       run: |
