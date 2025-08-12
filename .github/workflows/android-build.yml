@@ -19,7 +19,7 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '18'
-        cache: 'npm'
+        # Remove cache dependency on lock file
 
     - name: Setup Java JDK
       uses: actions/setup-java@v4
@@ -45,7 +45,7 @@ jobs:
           ${{ runner.os }}-gradle-
 
     - name: Install dependencies
-      run: npm install
+      run: npm install --legacy-peer-deps
       working-directory: ./
 
     - name: Create local.properties
