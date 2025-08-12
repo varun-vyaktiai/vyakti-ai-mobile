@@ -5,134 +5,100 @@ on:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
-  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
+    - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Set up Node.js
+    - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '18'
+        cache: 'npm'
 
-    - name: Set up JDK 17
+    - name: Install dependencies
+      run: npm install
+
+    - name: Setup Java 17
       uses: actions/setup-java@v4
       with:
-        java-version: '17'
         distribution: 'temurin'
+        java-version: '17'
 
-    - name: Set up Android SDK
-      uses: android-actions/setup-android@v2
-      
-    - name: Install Android SDK components
-      run: |
-        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
-        $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
-
-    - name: Install Node dependencies
-      run: npm install --legacy-peer-deps
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+      with:
+        api-level: 35
+        build-tools: 35.0.0
+        ndk-version: 25.1.8937393
 
     - name: Create Android local.properties
       run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
 
-    - name: Fix android/build.gradle repositories and dependencies
+    - name: Fix android/build.gradle - Add missing repositories
       run: |
-        echo "Original android/build.gradle:"
+        echo "Original build.gradle:"
         cat android/build.gradle
         
-        cat > android/build.gradle << 'EOF'
-        buildscript {
-            ext {
-                buildToolsVersion = "35.0.0"
-                minSdkVersion = 24
-                compileSdkVersion = 35
-                targetSdkVersion = 35
-                ndkVersion = "25.1.8937393"
-                kotlinVersion = "1.8.10"
-            }
-            repositories {
-                google()
-                mavenCentral()
-                maven { url "https://www.jitpack.io" }
-            }
-            dependencies {
-                classpath 'com.android.tools.build:gradle:7.4.2'
-                classpath 'com.facebook.react:react-native-gradle-plugin'
-                classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.8.10'
-            }
-        }
-
-        apply plugin: "com.facebook.react.rootproject"
-
-        allprojects {
-            repositories {
-                google()
-                mavenCentral()
-                maven { url "https://www.jitpack.io" }
-                maven { url "https://maven.google.com" }
-                maven {
-                    url("$rootDir/../node_modules/react-native/android")
-                }
-            }
-        }
-        EOF
+        # Add repositories to buildscript block
+        sed -i '/buildscript {/,/dependencies {/ {
+          /dependencies {/i\    repositories {\
+\        google()\
+\        mavenCentral()\
+\        maven { url "https://www.jitpack.io" }\
+\    }
+        }' android/build.gradle
         
-        echo "Updated android/build.gradle with proper syntax:"
+        echo "Updated build.gradle:"
         cat android/build.gradle
 
-    - name: Fix gradlew shell compatibility and make executable
+    - name: Fix android/app/build.gradle - Set entryFile as file
       run: |
-        # Fix the HERE-doc syntax issue in gradlew line 210
-        sed -i 's/ARGS=$( xargs -n1 <<<"$\*" | shuf | xargs )/ARGS=$( printf "%s\\n" "$@" | shuf | xargs )/' android/gradlew
-        sed -i 's/ARGS=$( xargs -n1 <<<"$\*" | sort -u | xargs )/ARGS=$( printf "%s\\n" "$@" | sort -u | xargs )/' android/gradlew
-        chmod +x android/gradlew
-        echo "Fixed gradlew syntax and made executable"
-
-    - name: Fix React Native 0.73.6 entryFile property
-      run: |
-        echo "Before fix:"
-        head -15 android/app/build.gradle
-        
-        perl -i -pe 's/entryFile = "index\.js"/entryFile = file("..\/index.js")/' android/app/build.gradle
+        echo "Fixing entryFile type for React Native 0.73.6..."
+        sed -i 's/entryFile = "index.js"/entryFile = file("..\/index.js")/' android/app/build.gradle
         
         echo "After fix:"
         head -15 android/app/build.gradle
 
-    - name: Create simplified settings.gradle
-      run: |
-        cat > android/settings.gradle << 'EOF'
-        rootProject.name = 'VyaktiAI'
-        include ':app'
+    - name: Make gradlew executable
+      run: chmod +x android/gradlew
 
-        apply from: file("../node_modules/@react-native-community/cli-platform-android/native_modules.gradle"); applyNativeModulesSettingsGradle(settings)
-        EOF
+    - name: Clean project
+      run: cd android && ./gradlew clean
 
-    - name: Setup compatible Gradle wrapper
-      run: |
-        cd android
-        # Download and setup Gradle 7.6.4 which is compatible with React Native 0.73.6
-        wget -q https://services.gradle.org/distributions/gradle-7.6.4-bin.zip
-        unzip -q gradle-7.6.4-bin.zip
-        
-        # Create gradle wrapper with compatible version
-        ./gradle-7.6.4/bin/gradle wrapper --gradle-version=7.6.4
-        
-        # Ensure gradle-wrapper.properties has correct version
-        echo "distributionUrl=https\://services.gradle.org/distributions/gradle-7.6.4-bin.zip" > gradle/wrapper/gradle-wrapper.properties
-
-    - name: Clean and build APK
-      run: |
-        cd android
-        ./gradlew clean --stacktrace
-        ./gradlew assembleRelease --stacktrace
+    - name: Build Release APK
+      run: cd android && ./gradlew assembleRelease
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: vyakti-ai-apk
-        path: android/app/build/outputs/apk/release/*.apk
+        name: vyakti-ai-release-apk
+        path: android/app/build/outputs/apk/release/app-release.apk
+        retention-days: 30
+
+    - name: Build Release AAB (Android App Bundle)
+      run: cd android && ./gradlew bundleRelease
+
+    - name: Upload AAB
+      uses: actions/upload-artifact@v4
+      with:
+        name: vyakti-ai-release-aab
+        path: android/app/build/outputs/bundle/release/app-release.aab
+        retention-days: 30
+
+    - name: Display build summary
+      run: |
+        echo "🎉 Build completed successfully!"
+        echo "📱 APK: android/app/build/outputs/apk/release/app-release.apk"
+        echo "📦 AAB: android/app/build/outputs/bundle/release/app-release.aab"
+        echo ""
+        echo "Build details:"
+        echo "- React Native: 0.73.6"
+        echo "- Target SDK: 35 (Android 15)"
+        echo "- Min SDK: 24"
+        echo "- App ID: com.vyaktiai.mobile"
+        echo "- Ready for Google Play Store submission"
