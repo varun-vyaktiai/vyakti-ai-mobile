@@ -1,4 +1,4 @@
-name: Build Vyakti AI React Native 0.73.6
+name: Build Vyakti AI React Native 0.73.6 (Bulletproof)
 
 on:
   push:
@@ -32,6 +32,16 @@ jobs:
       with:
         cmdline-tools-version: 11076708
         packages: "platform-tools platforms;android-35 build-tools;35.0.0 ndk;25.1.8937393"
+
+    - name: Install Gradle Directly (Bypass Corrupted Wrapper)
+      run: |
+        echo "Installing Gradle 8.1.1 directly to bypass wrapper issues..."
+        wget -q https://services.gradle.org/distributions/gradle-8.1.1-bin.zip
+        unzip -q gradle-8.1.1-bin.zip
+        sudo mv gradle-8.1.1 /opt/gradle
+        echo "export PATH=/opt/gradle/bin:\$PATH" >> $GITHUB_ENV
+        export PATH=/opt/gradle/bin:$PATH
+        gradle --version
 
     - name: Install React Native Dependencies
       run: npm install --legacy-peer-deps
@@ -98,11 +108,6 @@ jobs:
         FLIPPER_VERSION=0.182.0
         EOF
 
-    - name: Fix Gradle Wrapper Permissions
-      run: |
-        chmod +x android/gradlew
-        ls -la android/gradlew
-
     - name: Create Debug Keystore
       working-directory: android/app
       run: |
@@ -113,27 +118,36 @@ jobs:
             -dname "CN=Android Debug,O=Android,C=US"
         fi
 
-    - name: Test Configuration (No React Native Gradle Plugin Classpath)
+    - name: Test Configuration (Direct Gradle - No Wrapper)
       working-directory: android
       run: |
-        echo "Testing React Native 0.73.6 built-in gradle plugin..."
-        ./gradlew tasks --no-daemon --stacktrace
+        echo "Testing React Native 0.73.6 with direct gradle installation..."
+        export PATH=/opt/gradle/bin:$PATH
+        gradle tasks --no-daemon --stacktrace
 
     - name: Clean Build
       working-directory: android
-      run: ./gradlew clean --no-daemon --stacktrace
+      run: |
+        export PATH=/opt/gradle/bin:$PATH
+        gradle clean --no-daemon --stacktrace
 
     - name: Build Debug APK
       working-directory: android
-      run: ./gradlew assembleDebug --no-daemon --stacktrace
+      run: |
+        export PATH=/opt/gradle/bin:$PATH
+        gradle assembleDebug --no-daemon --stacktrace
 
     - name: Build Release APK
       working-directory: android
-      run: ./gradlew assembleRelease --no-daemon --stacktrace
+      run: |
+        export PATH=/opt/gradle/bin:$PATH
+        gradle assembleRelease --no-daemon --stacktrace
 
     - name: Build Release AAB
       working-directory: android
-      run: ./gradlew bundleRelease --no-daemon --stacktrace
+      run: |
+        export PATH=/opt/gradle/bin:$PATH
+        gradle bundleRelease --no-daemon --stacktrace
 
     - name: Verify Build Results
       run: |
@@ -148,33 +162,33 @@ jobs:
     - name: Upload Debug APK
       uses: actions/upload-artifact@v4
       with:
-        name: vyakti-ai-debug-fixed
+        name: vyakti-ai-debug-bulletproof
         path: android/app/build/outputs/apk/debug/*.apk
         retention-days: 7
 
     - name: Upload Release APK
       uses: actions/upload-artifact@v4
       with:
-        name: vyakti-ai-release-fixed
+        name: vyakti-ai-release-bulletproof
         path: android/app/build/outputs/apk/release/*.apk
         retention-days: 14
 
     - name: Upload Play Store AAB
       uses: actions/upload-artifact@v4
       with:
-        name: vyakti-ai-playstore-fixed
+        name: vyakti-ai-playstore-bulletproof
         path: android/app/build/outputs/bundle/release/*.aab
         retention-days: 30
 
     - name: Build Success
       run: |
         echo "✅ Vyakti AI React Native 0.73.6 app built successfully!"
-        echo "✅ Fixed gradlew permissions and gradle configuration"
+        echo "✅ Used direct Gradle installation (bypassed corrupted wrapper)"
         echo "✅ Removed problematic react-native-gradle-plugin classpath"
         echo "✅ Used built-in React Native gradle plugin"
         echo "✅ Generated production-ready APK and AAB files"
         echo ""
         echo "📱 Your complete mobile app is ready:"
-        echo "• vyakti-ai-debug-fixed (for testing)"
-        echo "• vyakti-ai-release-fixed (for distribution)"  
-        echo "• vyakti-ai-playstore-fixed (for Google Play Store)"
+        echo "• vyakti-ai-debug-bulletproof (for testing)"
+        echo "• vyakti-ai-release-bulletproof (for distribution)"  
+        echo "• vyakti-ai-playstore-bulletproof (for Google Play Store)"
