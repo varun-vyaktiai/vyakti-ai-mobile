@@ -1,4 +1,4 @@
-me: Build Vyakti AI Android APK
+name: Build Vyakti AI Android APK
 
 on:
   push:
@@ -40,165 +40,27 @@ jobs:
     - name: Create Android local.properties
       run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
 
-    - name: Create missing settings.gradle if needed
-      run: |
-        if [ ! -f android/settings.gradle ]; then
-          cat > android/settings.gradle << 'EOF'
-        pluginManagement {
-            repositories {
-                google()
-                mavenCentral()
-                gradlePluginPortal()
-            }
-        }
-        dependencyResolutionManagement {
-            repositoriesMode.set(RepositoriesMode.PREFER_PROJECT)
-            repositories {
-                google()
-                mavenCentral()
-                maven { url "https://www.jitpack.io" }
-            }
-        }
-
-        rootProject.name = 'VyaktiAI'
-        include ':app'
-        includeBuild('../node_modules/@react-native/gradle-plugin')
-
-        apply from: file("../node_modules/@react-native-community/cli-platform-android/native_modules.gradle"); applyNativeModulesSettingsGradle(settings)
-        EOF
-        fi
-
-    - name: Update build.gradle for React Native 0.73.6
-      run: |
-        cat > android/build.gradle << 'EOF'
-        buildscript {
-            ext {
-                buildToolsVersion = "35.0.0"
-                minSdkVersion = 24
-                compileSdkVersion = 35
-                targetSdkVersion = 35
-                ndkVersion = "25.1.8937393"
-                kotlinVersion = "1.8.10"
-            }
-            repositories {
-                google()
-                mavenCentral()
-                maven { url "https://www.jitpack.io" }
-            }
-            dependencies {
-                classpath("com.android.tools.build:gradle:8.1.1")
-                classpath("com.facebook.react:react-native-gradle-plugin")
-                classpath("org.jetbrains.kotlin:kotlin-gradle-plugin")
-            }
-        }
-
-        apply plugin: "com.facebook.react.rootproject"
-
-        allprojects {
-            repositories {
-                google()
-                mavenCentral()
-                maven { url "https://www.jitpack.io" }
-                maven { url "https://maven.google.com" }
-                maven {
-                    url("$rootDir/../node_modules/react-native/android")
-                }
-            }
-        }
-        EOF
-
-    - name: Update gradle.properties
-      run: |
-        cat > android/gradle.properties << 'EOF'
-        org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m
-        android.useAndroidX=true
-        android.enableJetifier=true
-        FLIPPER_VERSION=0.182.0
-        reactNativeArchitectures=armeabi-v7a,arm64-v8a,x86,x86_64
-        newArchEnabled=false
-        hermesEnabled=true
-        android.nonTransitiveRClass=true
-        android.enableR8.fullMode=true
-        org.gradle.parallel=true
-        org.gradle.configureondemand=true
-        org.gradle.daemon=true
-        # Remove experimental legacy transform that causes warnings
-        EOF
-
-    - name: Create debug keystore
-      run: |
-        cd android/app
-        if [ ! -f debug.keystore ]; then
-            keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "C=US, O=Android, CN=Android Debug"
-        fi
-
-    - name: Make gradlew executable and setup wrapper
-      run: |
-        cd android
-        chmod +x gradlew
-        if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
-          wget https://services.gradle.org/distributions/gradle-8.0-bin.zip
-          unzip -q gradle-8.0-bin.zip
-          export PATH=$PWD/gradle-8.0/bin:$PATH
-          gradle wrapper --gradle-version=8.0
-        fi
-
-    - name: Clean project
-      run: |
-        cd android
-        ./gradlew clean
+    - name: Make gradlew executable
+      run: chmod +x android/gradlew
 
     - name: Fix React Native 0.73.6 entryFile property
       run: |
-        echo "=== Before fix - checking original build.gradle ==="
+        echo "Before fix:"
         head -15 android/app/build.gradle
         
-        # Use perl for more reliable replacement
         perl -i -pe 's/entryFile = "index\.js"/entryFile = file("..\/index.js")/' android/app/build.gradle
         
-        # Double check the replacement worked, if not use backup method
-        if grep -q 'entryFile = "index.js"' android/app/build.gradle; then
-          echo "=== Perl replacement failed, using backup method ==="
-          # Create complete build.gradle replacement
-          cp android/app/build.gradle android/app/build.gradle.backup
-          head -8 android/app/build.gradle > android/app/build.gradle.new
-          echo 'react {' >> android/app/build.gradle.new
-          echo '    entryFile = file("../index.js")' >> android/app/build.gradle.new
-          tail -n +11 android/app/build.gradle | head -n 4 >> android/app/build.gradle.new
-          echo '}' >> android/app/build.gradle.new
-          tail -n +15 android/app/build.gradle >> android/app/build.gradle.new
-          mv android/app/build.gradle.new android/app/build.gradle
-        fi
-        
-        echo "=== After fix - checking modified build.gradle ==="
+        echo "After fix:"
         head -15 android/app/build.gradle
-        
-        echo "=== Verification - searching for old pattern ==="
-        grep -n "entryFile" android/app/build.gradle || echo "No entryFile found"
 
-    - name: Build Release APK
+    - name: Clean and build APK
       run: |
         cd android
-        ./gradlew assembleRelease --stacktrace --info
+        ./gradlew clean
+        ./gradlew assembleRelease
 
-    - name: Build Release AAB
-      run: |
-        cd android
-        ./gradlew bundleRelease --stacktrace
-
-    - name: List build outputs
-      run: |
-        echo "=== Checking build outputs ==="
-        find android/app/build/outputs -type f -name "*.apk" -o -name "*.aab" | head -10
-
-    - name: Upload APK Artifacts
+    - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: vyakti-ai-apk
         path: android/app/build/outputs/apk/release/*.apk
-
-    - name: Upload AAB Artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: vyakti-ai-aab
-        path: android/app/build/outputs/bundle/release/*.aab
