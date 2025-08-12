@@ -38,44 +38,20 @@ jobs:
     - name: Create local.properties
       run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
 
-    - name: Completely rebuild Gradle wrapper
+    - name: Install Gradle directly
       run: |
-        cd android
-        
-        # Create wrapper directory
-        mkdir -p gradle/wrapper
-        
-        # Download gradle-wrapper.jar
-        curl -L -o gradle/wrapper/gradle-wrapper.jar https://services.gradle.org/distributions/gradle-8.1.1-wrapper.jar
-        
-        # Create gradle-wrapper.properties
-        cat > gradle/wrapper/gradle-wrapper.properties << 'EOF'
-        distributionBase=GRADLE_USER_HOME
-        distributionPath=wrapper/dists
-        distributionUrl=https\://services.gradle.org/distributions/gradle-8.1.1-bin.zip
-        zipStoreBase=GRADLE_USER_HOME
-        zipStorePath=wrapper/dists
-        EOF
-        
-        # Create simple gradlew script
-        cat > gradlew << 'EOF'
-        #!/bin/sh
-        GRADLE_APP_HOME="$(cd "$(dirname "$0")" && pwd)"
-        exec java -cp "$GRADLE_APP_HOME/gradle/wrapper/gradle-wrapper.jar" org.gradle.wrapper.GradleWrapperMain "$@"
-        EOF
-        
-        chmod +x gradlew
-        
-        echo "Gradle wrapper rebuilt successfully"
-
-    - name: Test Gradle wrapper
-      run: cd android && ./gradlew --version
+        cd /tmp
+        wget https://services.gradle.org/distributions/gradle-8.1.1-bin.zip
+        unzip gradle-8.1.1-bin.zip
+        sudo mv gradle-8.1.1 /opt/gradle
+        sudo ln -s /opt/gradle/bin/gradle /usr/local/bin/gradle
+        gradle --version
 
     - name: Clean project
-      run: cd android && ./gradlew clean --no-daemon
+      run: cd android && gradle clean
 
     - name: Build Release APK
-      run: cd android && ./gradlew assembleRelease --no-daemon --stacktrace
+      run: cd android && gradle assembleRelease --stacktrace
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
@@ -85,7 +61,7 @@ jobs:
         retention-days: 7
 
     - name: Build AAB
-      run: cd android && ./gradlew bundleRelease --no-daemon
+      run: cd android && gradle bundleRelease
 
     - name: Upload AAB
       uses: actions/upload-artifact@v4
@@ -96,7 +72,7 @@ jobs:
 
     - name: Build Summary
       run: |
-        echo "🎉 Build completed successfully!"
-        echo "📱 APK: android/app/build/outputs/apk/release/app-release.apk"
-        echo "📦 AAB: android/app/build/outputs/bundle/release/app-release.aab"
-        echo "✅ Ready for Google Play Store submission"
+        echo "Build completed successfully!"
+        echo "APK: android/app/build/outputs/apk/release/app-release.apk"
+        echo "AAB: android/app/build/outputs/bundle/release/app-release.aab"
+        echo "Ready for Google Play Store submission"
