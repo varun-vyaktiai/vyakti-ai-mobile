@@ -1,4 +1,4 @@
-name: Build Vyakti AI React Native 0.73.6 (Bulletproof)
+name: Build Vyakti AI React Native 0.73.6 (Ultimate Fix)
 
 on:
   push:
@@ -46,13 +46,13 @@ jobs:
     - name: Install React Native Dependencies
       run: npm install --legacy-peer-deps
 
-    - name: Fix React Native 0.73.6 Gradle Configuration
+    - name: Fix React Native 0.73.6 Complete Configuration
       run: |
         # Create local.properties
         echo "sdk.dir=$ANDROID_HOME" > android/local.properties
         
-        # Remove the problematic react-native-gradle-plugin classpath dependency
-        # React Native 0.73.6 has it built-in and doesn't need external classpath
+        # Create the complete React Native 0.73.6 build configuration
+        # This includes BOTH the buildscript AND the React Native root project plugin
         cat > android/build.gradle << 'EOF'
         // Top-level build file where you can add configuration options common to all sub-projects/modules.
 
@@ -77,6 +77,9 @@ jobs:
                 // NOTE: React Native 0.73.6 has built-in gradle plugin, no classpath needed
             }
         }
+
+        // CRITICAL: Apply the React Native root project plugin
+        apply plugin: "com.facebook.react.rootproject"
 
         allprojects {
             repositories {
@@ -118,10 +121,10 @@ jobs:
             -dname "CN=Android Debug,O=Android,C=US"
         fi
 
-    - name: Test Configuration (Direct Gradle - No Wrapper)
+    - name: Test Configuration (Complete React Native Setup)
       working-directory: android
       run: |
-        echo "Testing React Native 0.73.6 with direct gradle installation..."
+        echo "Testing React Native 0.73.6 with complete configuration..."
         export PATH=/opt/gradle/bin:$PATH
         gradle tasks --no-daemon --stacktrace
 
@@ -162,33 +165,33 @@ jobs:
     - name: Upload Debug APK
       uses: actions/upload-artifact@v4
       with:
-        name: vyakti-ai-debug-bulletproof
+        name: vyakti-ai-debug-ultimate
         path: android/app/build/outputs/apk/debug/*.apk
         retention-days: 7
 
     - name: Upload Release APK
       uses: actions/upload-artifact@v4
       with:
-        name: vyakti-ai-release-bulletproof
+        name: vyakti-ai-release-ultimate
         path: android/app/build/outputs/apk/release/*.apk
         retention-days: 14
 
     - name: Upload Play Store AAB
       uses: actions/upload-artifact@v4
       with:
-        name: vyakti-ai-playstore-bulletproof
+        name: vyakti-ai-playstore-ultimate
         path: android/app/build/outputs/bundle/release/*.aab
         retention-days: 30
 
     - name: Build Success
       run: |
         echo "✅ Vyakti AI React Native 0.73.6 app built successfully!"
+        echo "✅ Fixed missing React Native root project plugin"
         echo "✅ Used direct Gradle installation (bypassed corrupted wrapper)"
-        echo "✅ Removed problematic react-native-gradle-plugin classpath"
-        echo "✅ Used built-in React Native gradle plugin"
+        echo "✅ Complete React Native 0.73.6 build configuration applied"
         echo "✅ Generated production-ready APK and AAB files"
         echo ""
         echo "📱 Your complete mobile app is ready:"
-        echo "• vyakti-ai-debug-bulletproof (for testing)"
-        echo "• vyakti-ai-release-bulletproof (for distribution)"  
-        echo "• vyakti-ai-playstore-bulletproof (for Google Play Store)"
+        echo "• vyakti-ai-debug-ultimate (for testing)"
+        echo "• vyakti-ai-release-ultimate (for distribution)"  
+        echo "• vyakti-ai-playstore-ultimate (for Google Play Store)"
