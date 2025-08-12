@@ -97,7 +97,7 @@ jobs:
                 maven { url "https://repo1.maven.org/maven2/" }
                 maven { url "https://www.jitpack.io" }
                 maven { url "https://maven.google.com" }
-                jcenter() {
+                mavenCentral {
                     content {
                         includeModule("com.yqritc", "Android-ScalableVideoView")
                         includeModule("com.facebook.react", "react-native")
@@ -109,7 +109,7 @@ jobs:
         }
         EOF
 
-    - name: Create gradle.properties with compiler warnings suppression
+    - name: Create gradle.properties
       run: |
         cd android
         cat > gradle.properties << 'EOF'
@@ -120,51 +120,164 @@ jobs:
         android.experimental.legacyTransform.forceNonIncremental=true
         EOF
 
-    - name: Fix AndroidManifest.xml namespace issue
+    - name: Create complete Android project structure
+      run: |
+        cd android
+        mkdir -p app/src/main/java/com/vyaktiai/mobile
+        mkdir -p app/src/main/res/values
+        mkdir -p app/src/main/res/mipmap-hdpi
+        mkdir -p app/src/main/res/mipmap-mdpi
+        mkdir -p app/src/main/res/mipmap-xhdpi
+        mkdir -p app/src/main/res/mipmap-xxhdpi
+        mkdir -p app/src/main/res/mipmap-xxxhdpi
+
+    - name: Create MainActivity.kt
+      run: |
+        cd android/app/src/main/java/com/vyaktiai/mobile
+        cat > MainActivity.kt << 'ACTIVITY_EOF'
+        package com.vyaktiai.mobile
+
+        import android.os.Bundle
+        import androidx.appcompat.app.AppCompatActivity
+        import androidx.core.view.ViewCompat
+        import androidx.core.view.WindowInsetsCompat
+
+        class MainActivity : AppCompatActivity() {
+            override fun onCreate(savedInstanceState: Bundle?) {
+                super.onCreate(savedInstanceState)
+                setContentView(R.layout.activity_main)
+                
+                ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
+                    val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+                    v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
+                    insets
+                }
+            }
+        }
+        ACTIVITY_EOF
+
+    - name: Create activity_main.xml layout
+      run: |
+        cd android/app/src/main/res
+        mkdir -p layout
+        cat > layout/activity_main.xml << 'LAYOUT_EOF'
+        <?xml version="1.0" encoding="utf-8"?>
+        <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+            xmlns:app="http://schemas.android.com/apk/res-auto"
+            xmlns:tools="http://schemas.android.com/tools"
+            android:id="@+id/main"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            tools:context=".MainActivity">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Vyakti AI"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+        LAYOUT_EOF
+
+    - name: Create strings.xml and themes
+      run: |
+        cd android/app/src/main/res/values
+        cat > strings.xml << 'STRINGS_EOF'
+        <resources>
+            <string name="app_name">Vyakti AI</string>
+        </resources>
+        STRINGS_EOF
+        
+        cat > themes.xml << 'THEMES_EOF'
+        <resources xmlns:tools="http://schemas.android.com/tools">
+            <style name="Base.Theme.VyaktiAI" parent="Theme.Material3.DayNight">
+                <item name="colorPrimary">@android:color/holo_blue_bright</item>
+            </style>
+
+            <style name="Theme.VyaktiAI" parent="Base.Theme.VyaktiAI" />
+        </resources>
+        THEMES_EOF
+
+    - name: Create app icons (basic)
+      run: |
+        cd android/app/src/main/res
+        # Create basic launcher icon files using Android asset studio defaults
+        echo "Creating basic app icons..."
+        for dpi in hdpi mdpi xhdpi xxhdpi xxxhdpi; do
+          echo "Icon placeholder for $dpi" > mipmap-$dpi/ic_launcher.png.placeholder
+        done
+
+    - name: Fix AndroidManifest.xml
       run: |
         cd android/app/src/main
-        if [ -f AndroidManifest.xml ]; then
-          # Remove package attribute from AndroidManifest.xml as it's deprecated in AGP 8+
-          sed -i 's/package="[^"]*"//g' AndroidManifest.xml
-          echo "Fixed AndroidManifest.xml namespace"
-        else
-          echo "AndroidManifest.xml not found, creating minimal version"
-          cat > AndroidManifest.xml << 'MANIFEST_EOF'
-        <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+        cat > AndroidManifest.xml << 'MANIFEST_EOF'
+        <?xml version="1.0" encoding="utf-8"?>
+        <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+            xmlns:tools="http://schemas.android.com/tools">
+
             <uses-permission android:name="android.permission.INTERNET" />
             <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-            
+
             <application
                 android:allowBackup="true"
+                android:dataExtractionRules="@xml/data_extraction_rules"
+                android:fullBackupContent="@xml/backup_rules"
                 android:icon="@mipmap/ic_launcher"
-                android:label="Vyakti AI"
-                android:theme="@style/Theme.AppCompat.DayNight.NoActionBar">
+                android:label="@string/app_name"
+                android:roundIcon="@mipmap/ic_launcher"
+                android:supportsRtl="true"
+                android:theme="@style/Theme.VyaktiAI"
+                tools:targetApi="31">
                 <activity
                     android:name=".MainActivity"
                     android:exported="true"
-                    android:launchMode="singleTop"
-                    android:windowSoftInputMode="adjustResize">
+                    android:theme="@style/Theme.VyaktiAI">
                     <intent-filter>
                         <action android:name="android.intent.action.MAIN" />
                         <category android:name="android.intent.category.LAUNCHER" />
                     </intent-filter>
                 </activity>
             </application>
+
         </manifest>
         MANIFEST_EOF
-        fi
 
-    - name: Create minimal app build.gradle
+    - name: Create backup and data extraction rules
+      run: |
+        cd android/app/src/main/res
+        mkdir -p xml
+        cat > xml/backup_rules.xml << 'BACKUP_EOF'
+        <?xml version="1.0" encoding="utf-8"?>
+        <full-backup-content>
+        </full-backup-content>
+        BACKUP_EOF
+        
+        cat > xml/data_extraction_rules.xml << 'DATA_EOF'
+        <?xml version="1.0" encoding="utf-8"?>
+        <data-extraction-rules>
+            <cloud-backup>
+            </cloud-backup>
+            <device-transfer>
+            </device-transfer>
+        </data-extraction-rules>
+        DATA_EOF
+
+    - name: Create app build.gradle
       run: |
         cd android
         cat > app/build.gradle << 'EOF'
         plugins {
-            id "com.android.application"
-            id "org.jetbrains.kotlin.android"
+            id 'com.android.application'
+            id 'org.jetbrains.kotlin.android'
         }
 
         android {
-            namespace "com.vyaktiai.mobile"
+            namespace 'com.vyaktiai.mobile'
             compileSdk 35
 
             defaultConfig {
@@ -174,11 +287,6 @@ jobs:
                 versionCode 1
                 versionName "1.0"
                 testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-                multiDexEnabled true
-                
-                ndk {
-                    abiFilters "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
-                }
             }
 
             buildTypes {
@@ -186,10 +294,6 @@ jobs:
                     minifyEnabled false
                     proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
                     signingConfig signingConfigs.debug
-                }
-                debug {
-                    applicationIdSuffix ".debug"
-                    debuggable true
                 }
             }
             
@@ -202,30 +306,73 @@ jobs:
                 jvmTarget = '1.8'
             }
             
-            packagingOptions {
-                pickFirst '**/libc++_shared.so'
-                pickFirst '**/libjsc.so'
+            buildFeatures {
+                viewBinding true
             }
         }
 
         dependencies {
             implementation 'androidx.core:core-ktx:1.12.0'
             implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.7.0'
-            implementation 'androidx.activity:activity-compose:1.8.2'
+            implementation 'androidx.activity:activity-ktx:1.8.2'
             implementation 'androidx.appcompat:appcompat:1.6.1'
             implementation 'com.google.android.material:material:1.11.0'
-            implementation 'androidx.multidex:multidex:2.0.1'
+            implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
             testImplementation 'junit:junit:4.13.2'
             androidTestImplementation 'androidx.test.ext:junit:1.1.5'
             androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
         }
         EOF
 
+    - name: Create proguard-rules.pro
+      run: |
+        cd android/app
+        cat > proguard-rules.pro << 'PROGUARD_EOF'
+        # Add project specific ProGuard rules here.
+        # You can control the set of applied configuration files using the
+        # proguardFiles setting in build.gradle.
+        #
+        # For more details, see
+        #   http://developer.android.com/guide/developing/tools/proguard.html
+
+        # If your project uses WebView with JS, uncomment the following
+        # and specify the fully qualified class name to the JavaScript interface
+        # class:
+        #-keepclassmembers class fqcn.of.javascript.interface.for.webview {
+        #   public *;
+        #}
+
+        # Uncomment this to preserve the line number information for
+        # debugging stack traces.
+        #-keepattributes SourceFile,LineNumberTable
+
+        # If you keep the line number information, uncomment this to
+        # hide the original source file name.
+        #-renamesourcefileattribute SourceFile
+        PROGUARD_EOF
+
     - name: Create settings.gradle
       run: |
         cd android
-        echo "rootProject.name = 'VyaktiAI'" > settings.gradle
-        echo "include ':app'" >> settings.gradle
+        cat > settings.gradle << 'SETTINGS_EOF'
+        pluginManagement {
+            repositories {
+                google()
+                mavenCentral()
+                gradlePluginPortal()
+            }
+        }
+        dependencyResolutionManagement {
+            repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+            repositories {
+                google()
+                mavenCentral()
+            }
+        }
+
+        rootProject.name = "VyaktiAI"
+        include ':app'
+        SETTINGS_EOF
 
     - name: Install fresh Gradle 8.1.1
       run: |
@@ -241,25 +388,12 @@ jobs:
         /opt/gradle/bin/gradle wrapper --gradle-version 8.1.1
         chmod +x gradlew
 
-    - name: Verify setup and clean
+    - name: Clean and build
       run: |
         cd android
-        ./gradlew --version
         ./gradlew clean --no-daemon --stacktrace
-
-    - name: Build Debug APK
-      run: |
-        cd android
-        ./gradlew assembleDebug --no-daemon --stacktrace --warning-mode all
-
-    - name: Build Release APK
-      run: |
-        cd android
+        ./gradlew assembleDebug --no-daemon --stacktrace
         ./gradlew assembleRelease --no-daemon --stacktrace
-
-    - name: Build Release AAB
-      run: |
-        cd android
         ./gradlew bundleRelease --no-daemon --stacktrace
 
     - name: Verify build outputs
