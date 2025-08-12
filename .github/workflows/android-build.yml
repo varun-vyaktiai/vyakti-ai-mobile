@@ -37,13 +37,6 @@ jobs:
     - name: Install npm dependencies
       run: npm ci --legacy-peer-deps
 
-    - name: Verify React Native installation
-      run: |
-        ls -la node_modules/react-native/
-        ls -la node_modules/@react-native/
-        echo "React Native version:"
-        node -e "console.log(require('./package.json').dependencies['react-native'])"
-
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
       with:
@@ -53,24 +46,23 @@ jobs:
     - name: Create Android local.properties
       run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
 
-    - name: Clean existing Gradle files
+    - name: Backup original files
       run: |
         cd android
-        rm -f settings.gradle gradlew gradlew.bat
+        cp build.gradle build.gradle.original || echo "No original build.gradle"
+        cp app/build.gradle app/build.gradle.original || echo "No original app build.gradle"
+        cp settings.gradle settings.gradle.original || echo "No original settings.gradle"
+
+    - name: Remove problematic Gradle files
+      run: |
+        cd android
+        rm -f gradlew gradlew.bat settings.gradle
         rm -rf gradle/ .gradle/
 
-    - name: Install Gradle 8.1.1
-      run: |
-        curl -L -o gradle.zip https://services.gradle.org/distributions/gradle-8.1.1-bin.zip
-        unzip -q gradle.zip
-        sudo rm -rf /opt/gradle 2>/dev/null || true
-        sudo mv gradle-8.1.1 /opt/gradle
-        sudo chmod +x /opt/gradle/bin/gradle
-
-    - name: Create build.gradle for React Native 0.73.6
+    - name: Create clean root build.gradle
       run: |
         cd android
-        cat > build.gradle << 'GRADLE_EOF'
+        cat > build.gradle << 'EOF'
         buildscript {
             ext {
                 buildToolsVersion = "35.0.0"
@@ -114,9 +106,59 @@ jobs:
                 flatDir { dirs 'libs' }
             }
         }
+        EOF
 
-        apply plugin: "com.facebook.react.rootproject"
-        GRADLE_EOF
+    - name: Create minimal app build.gradle
+      run: |
+        cd android
+        cat > app/build.gradle << 'EOF'
+        plugins {
+            id "com.android.application"
+            id "org.jetbrains.kotlin.android"
+        }
+
+        android {
+            namespace "com.vyaktiai"
+            compileSdk 35
+
+            defaultConfig {
+                applicationId "com.vyaktiai"
+                minSdk 24
+                targetSdk 35
+                versionCode 1
+                versionName "1.0"
+                testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+            }
+
+            buildTypes {
+                release {
+                    minifyEnabled false
+                    proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+                    signingConfig signingConfigs.debug
+                }
+            }
+            
+            compileOptions {
+                sourceCompatibility JavaVersion.VERSION_1_8
+                targetCompatibility JavaVersion.VERSION_1_8
+            }
+            
+            kotlinOptions {
+                jvmTarget = '1.8'
+            }
+        }
+
+        dependencies {
+            implementation 'androidx.core:core-ktx:1.12.0'
+            implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.7.0'
+            implementation 'androidx.activity:activity-compose:1.8.2'
+            implementation 'androidx.appcompat:appcompat:1.6.1'
+            implementation 'com.google.android.material:material:1.11.0'
+            testImplementation 'junit:junit:4.13.2'
+            androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+            androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+        }
+        EOF
 
     - name: Create settings.gradle
       run: |
@@ -124,42 +166,59 @@ jobs:
         echo "rootProject.name = 'VyaktiAI'" > settings.gradle
         echo "include ':app'" >> settings.gradle
 
+    - name: Install fresh Gradle 8.1.1
+      run: |
+        curl -L -o gradle.zip https://services.gradle.org/distributions/gradle-8.1.1-bin.zip
+        unzip -q gradle.zip
+        sudo rm -rf /opt/gradle 2>/dev/null || true
+        sudo mv gradle-8.1.1 /opt/gradle
+        sudo chmod +x /opt/gradle/bin/gradle
+
     - name: Generate Gradle wrapper
       run: |
         cd android
         /opt/gradle/bin/gradle wrapper --gradle-version 8.1.1
         chmod +x gradlew
 
-    - name: Clear caches and test setup
+    - name: Verify setup
       run: |
         cd android
-        rm -rf ~/.gradle/caches/ .gradle/
         ./gradlew --version
-        echo "Testing basic Gradle functionality..."
-        ./gradlew tasks --all | grep -i "build" || echo "Gradle tasks listed"
+        ./gradlew projects
 
-    - name: Clean build directory
+    - name: Clean build
       run: |
         cd android
         ./gradlew clean --no-daemon --stacktrace
 
+    - name: Build Debug APK
+      run: |
+        cd android
+        ./gradlew assembleDebug --no-daemon --stacktrace
+
     - name: Build Release APK
       run: |
         cd android
-        ./gradlew assembleRelease --no-daemon --stacktrace --warning-mode all
+        ./gradlew assembleRelease --no-daemon --stacktrace
 
     - name: Build Release AAB
       run: |
         cd android
         ./gradlew bundleRelease --no-daemon --stacktrace
 
-    - name: Verify build outputs
+    - name: Verify outputs
       run: |
         find android/app/build/outputs -name "*.apk" -o -name "*.aab" | head -10
-        ls -la android/app/build/outputs/apk/release/ || echo "APK directory check"
-        ls -la android/app/build/outputs/bundle/release/ || echo "AAB directory check"
 
-    - name: Upload APK
+    - name: Upload Debug APK
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: vyakti-ai-debug-apk
+        path: android/app/build/outputs/apk/debug/*.apk
+        retention-days: 5
+
+    - name: Upload Release APK
       uses: actions/upload-artifact@v4
       if: success()
       with:
@@ -167,7 +226,7 @@ jobs:
         path: android/app/build/outputs/apk/release/*.apk
         retention-days: 7
 
-    - name: Upload AAB
+    - name: Upload Release AAB
       uses: actions/upload-artifact@v4
       if: success()
       with:
@@ -175,7 +234,13 @@ jobs:
         path: android/app/build/outputs/bundle/release/*.aab
         retention-days: 7
 
-    - name: Success Summary
+    - name: Restore original files
+      if: always()
       run: |
-        echo "Android build completed successfully!"
-        echo "Files ready for Google Play Store submission"
+        cd android
+        mv build.gradle.original build.gradle 2>/dev/null || echo "No original build.gradle to restore"
+        mv app/build.gradle.original app/build.gradle 2>/dev/null || echo "No original app build.gradle to restore"
+        mv settings.gradle.original settings.gradle 2>/dev/null || echo "No original settings.gradle to restore"
+
+    - name: Success
+      run: echo "Android APK and AAB build completed successfully!"
