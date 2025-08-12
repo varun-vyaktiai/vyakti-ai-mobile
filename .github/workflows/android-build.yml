@@ -29,11 +29,7 @@ jobs:
       uses: android-actions/setup-android@v3
       with:
         cmdline-tools-version: 11076708
-        packages: |
-          platform-tools
-          platforms;android-35
-          build-tools;35.0.0
-          ndk;25.1.8937393
+        packages: "platform-tools platforms;android-35 build-tools;35.0.0 ndk;25.1.8937393"
     - name: Create Android local.properties
       run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
     - name: Fix android/build.gradle - Add missing repositories
