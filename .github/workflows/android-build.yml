@@ -33,47 +33,22 @@ jobs:
         cmdline-tools-version: 11076708
         packages: "platform-tools platforms;android-35 build-tools;35.0.0 ndk;25.1.8937393"
 
-    - name: Verify Project Structure
-      run: |
-        echo "=== Vyakti AI Project Verification ==="
-        ls -la
-        echo ""
-        echo "Package.json exists: $(test -f package.json && echo 'YES' || echo 'NO')"
-        echo "Android directory: $(test -d android && echo 'YES' || echo 'NO')"
-        echo "App.js/App.tsx: $(test -f App.js -o -f App.tsx && echo 'YES' || echo 'NO')"
-
     - name: Install React Native Dependencies
-      run: |
-        echo "Installing dependencies with npm install..."
-        npm install --legacy-peer-deps
-        echo "Dependencies installed successfully"
+      run: npm install --legacy-peer-deps
 
     - name: Create Android Configuration
-      run: |
-        echo "sdk.dir=$ANDROID_HOME" > android/local.properties
-        echo "Android local.properties created"
+      run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
 
-    - name: Setup Gradle Wrapper
+    - name: Install Gradle Directly (Bypass Wrapper Issues)
       run: |
-        cd android
-        chmod +x gradlew
-        
-        mkdir -p gradle/wrapper
-        
-        # Download gradle-wrapper.jar
-        if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
-          curl -L -o gradle/wrapper/gradle-wrapper.jar https://github.com/gradle/gradle/raw/v8.1.1/gradle/wrapper/gradle-wrapper.jar
-        fi
-        
-        # Create gradle-wrapper.properties
-        cat > gradle/wrapper/gradle-wrapper.properties << 'EOF'
-        distributionBase=GRADLE_USER_HOME
-        distributionPath=wrapper/dists
-        distributionUrl=https\://services.gradle.org/distributions/gradle-8.1.1-bin.zip
-        networkTimeout=10000
-        zipStoreBase=GRADLE_USER_HOME
-        zipStorePath=wrapper/dists
-        EOF
+        echo "Installing Gradle directly to bypass wrapper corruption..."
+        cd /opt
+        sudo wget -q https://services.gradle.org/distributions/gradle-8.1.1-bin.zip
+        sudo unzip -q gradle-8.1.1-bin.zip
+        sudo rm gradle-8.1.1-bin.zip
+        sudo ln -sf /opt/gradle-8.1.1/bin/gradle /usr/local/bin/gradle
+        gradle --version
+        echo "✅ Gradle installed successfully"
 
     - name: Configure Gradle Properties
       run: |
@@ -86,57 +61,59 @@ jobs:
         echo "hermesEnabled=true" >> gradle.properties
         echo "org.gradle.daemon=false" >> gradle.properties
 
-    - name: Test Gradle
+    - name: Clean Build (Direct Gradle)
       working-directory: android
+      run: gradle clean --no-daemon --stacktrace
+
+    - name: Build Debug APK (Direct Gradle)
+      working-directory: android
+      run: gradle assembleDebug --no-daemon --stacktrace
+
+    - name: Build Release APK (Direct Gradle)
+      working-directory: android
+      run: gradle assembleRelease --no-daemon --stacktrace
+
+    - name: Build Release AAB (Direct Gradle)
+      working-directory: android
+      run: gradle bundleRelease --no-daemon --stacktrace
+
+    - name: Verify Build Outputs
       run: |
-        echo "Testing Gradle wrapper..."
-        ./gradlew --version
-
-    - name: Clean Build
-      working-directory: android
-      run: ./gradlew clean --no-daemon --stacktrace
-
-    - name: Build Debug APK
-      working-directory: android
-      run: ./gradlew assembleDebug --no-daemon --stacktrace
-
-    - name: Build Release APK
-      working-directory: android
-      run: ./gradlew assembleRelease --no-daemon --stacktrace
-
-    - name: Build Release AAB
-      working-directory: android
-      run: ./gradlew bundleRelease --no-daemon --stacktrace
-
-    - name: List Build Outputs
-      run: |
-        echo "=== Build Results ==="
+        echo "=== Vyakti AI Build Results ==="
         find android/app/build/outputs -name "*.apk" -o -name "*.aab" | sort
+        echo ""
+        echo "=== File Details ==="
+        for file in $(find android/app/build/outputs -name "*.apk" -o -name "*.aab"); do
+          echo "File: $(basename $file)"
+          echo "Size: $(du -h "$file" | cut -f1)"
+          echo "---"
+        done
 
     - name: Upload Debug APK
       uses: actions/upload-artifact@v4
       with:
-        name: vyakti-ai-debug
+        name: vyakti-ai-debug-direct
         path: android/app/build/outputs/apk/debug/*.apk
         retention-days: 7
 
     - name: Upload Release APK
       uses: actions/upload-artifact@v4
       with:
-        name: vyakti-ai-release
+        name: vyakti-ai-release-direct
         path: android/app/build/outputs/apk/release/*.apk
         retention-days: 14
 
     - name: Upload Play Store AAB
       uses: actions/upload-artifact@v4
       with:
-        name: vyakti-ai-playstore
+        name: vyakti-ai-playstore-direct
         path: android/app/build/outputs/bundle/release/*.aab
         retention-days: 30
 
-    - name: Success Summary
+    - name: Build Success
       run: |
         echo "✅ Vyakti AI React Native app built successfully!"
-        echo "✅ Debug APK ready for testing"
-        echo "✅ Release APK ready for distribution" 
-        echo "✅ AAB ready for Play Store submission"
+        echo "✅ Used direct Gradle installation to bypass wrapper issues"
+        echo "✅ Your complete mobile app with all features is ready"
+        echo "✅ Download APK from GitHub Actions artifacts"
+        echo "✅ Install on Android phone for testing"
