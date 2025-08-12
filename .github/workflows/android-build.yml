@@ -5,11 +5,12 @@ on:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
     - name: Checkout repository
@@ -25,9 +26,10 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '18'
+        cache: 'npm'
 
-    - name: Install dependencies
-      run: npm install
+    - name: Install npm dependencies
+      run: npm ci
 
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
@@ -35,42 +37,100 @@ jobs:
         cmdline-tools-version: 11076708
         packages: "platform-tools platforms;android-35 build-tools;35.0.0 ndk;25.1.8937393"
 
-    - name: Create local.properties
+    - name: Create Android local.properties
       run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
 
-    - name: Install Gradle directly
+    - name: Download and install Gradle 8.1.1
       run: |
-        cd /tmp
-        wget https://services.gradle.org/distributions/gradle-8.1.1-bin.zip
-        unzip gradle-8.1.1-bin.zip
+        curl -L -o gradle.zip https://services.gradle.org/distributions/gradle-8.1.1-bin.zip
+        unzip -q gradle.zip
+        sudo rm -rf /opt/gradle 2>/dev/null || true
         sudo mv gradle-8.1.1 /opt/gradle
-        sudo ln -s /opt/gradle/bin/gradle /usr/local/bin/gradle
-        gradle --version
+        sudo chmod +x /opt/gradle/bin/gradle
+        echo 'export PATH="/opt/gradle/bin:$PATH"' >> $GITHUB_ENV
+        /opt/gradle/bin/gradle --version
+
+    - name: Fix build.gradle with all repositories
+      run: |
+        cd android
+        cat > build.gradle << 'EOF'
+        // Top-level build file where you can add configuration options common to all sub-projects/modules.
+
+        buildscript {
+            ext {
+                buildToolsVersion = "35.0.0"
+                minSdkVersion = 24
+                compileSdkVersion = 35
+                targetSdkVersion = 35
+                ndkVersion = "25.1.8937393"
+                kotlinVersion = "1.8.10"
+            }
+            repositories {
+                google()
+                mavenCentral()
+                maven { url "https://www.jitpack.io" }
+                maven { url "https://repo1.maven.org/maven2/" }
+                maven { url "https://plugins.gradle.org/m2/" }
+                maven { url "https://maven.google.com" }
+                gradlePluginPortal()
+            }
+            dependencies {
+                classpath("com.android.tools.build:gradle:8.1.1")
+                classpath("com.facebook.react:react-native-gradle-plugin")
+                classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
+            }
+        }
+
+        apply plugin: "com.facebook.react.rootproject"
+
+        allprojects {
+            repositories {
+                google()
+                mavenCentral()
+                maven { url "https://www.jitpack.io" }
+                maven { url "https://repo1.maven.org/maven2/" }
+                maven { url "https://plugins.gradle.org/m2/" }
+                maven { url "https://maven.google.com" }
+                gradlePluginPortal()
+            }
+        }
+        EOF
+
+    - name: Test Gradle dependency resolution
+      run: |
+        cd android
+        /opt/gradle/bin/gradle dependencies --configuration classpath
 
     - name: Clean project
-      run: cd android && gradle clean
+      run: |
+        cd android
+        /opt/gradle/bin/gradle clean --no-daemon
 
     - name: Build Release APK
-      run: cd android && gradle assembleRelease --stacktrace
+      run: |
+        cd android
+        /opt/gradle/bin/gradle assembleRelease --no-daemon --stacktrace
 
-    - name: Upload APK
+    - name: Build Release AAB
+      run: |
+        cd android
+        /opt/gradle/bin/gradle bundleRelease --no-daemon
+
+    - name: Upload Release APK
       uses: actions/upload-artifact@v4
       with:
         name: vyakti-ai-release-apk
         path: android/app/build/outputs/apk/release/app-release.apk
         retention-days: 7
 
-    - name: Build AAB
-      run: cd android && gradle bundleRelease
-
-    - name: Upload AAB
+    - name: Upload Release AAB
       uses: actions/upload-artifact@v4
       with:
         name: vyakti-ai-release-aab
         path: android/app/build/outputs/bundle/release/app-release.aab
         retention-days: 7
 
-    - name: Build Summary
+    - name: Build Success Summary
       run: |
         echo "Build completed successfully!"
         echo "APK: android/app/build/outputs/apk/release/app-release.apk"
