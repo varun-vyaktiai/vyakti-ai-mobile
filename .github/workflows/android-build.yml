@@ -33,35 +33,31 @@ jobs:
         cmdline-tools-version: 11076708
         packages: "platform-tools platforms;android-35 build-tools;35.0.0 ndk;25.1.8937393"
 
-    - name: Verify mobile app directory exists
+    - name: Verify React Native project structure
       run: |
-        echo "=== Repository structure ==="
+        echo "=== React Native Project Structure ==="
         ls -la
-        echo "=== Mobile app directory ==="
-        ls -la mobile-app/
-        echo "=== Mobile app package.json ==="
-        cat mobile-app/package.json
+        echo "=== Package.json content ==="
+        cat package.json
+        echo "=== Android directory ==="
+        ls -la android/
 
     - name: Generate package-lock.json if missing
-      working-directory: mobile-app
       run: |
         if [ ! -f package-lock.json ]; then
-          echo "Creating missing package-lock.json..."
+          echo "Creating package-lock.json..."
           npm install --package-lock-only --legacy-peer-deps
         fi
 
     - name: Install React Native dependencies
-      working-directory: mobile-app
       run: npm ci --legacy-peer-deps
 
     - name: Create Android local.properties
-      working-directory: mobile-app
       run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
 
     - name: Fix Android Gradle configuration
-      working-directory: mobile-app/android
+      working-directory: android
       run: |
-        
         # Ensure gradle wrapper exists and is executable
         if [ ! -f gradlew ]; then
           echo "Creating Gradle wrapper..."
@@ -83,28 +79,28 @@ jobs:
         echo "hermesEnabled=true" >> gradle.properties
 
     - name: Clean previous builds
-      working-directory: mobile-app/android
+      working-directory: android
       run: ./gradlew clean --no-daemon --stacktrace
 
     - name: Build Debug APK
-      working-directory: mobile-app/android
+      working-directory: android
       run: ./gradlew assembleDebug --no-daemon --stacktrace
 
     - name: Build Release APK
-      working-directory: mobile-app/android
+      working-directory: android
       run: ./gradlew assembleRelease --no-daemon --stacktrace
 
     - name: Build Release AAB for Play Store
-      working-directory: mobile-app/android
+      working-directory: android
       run: ./gradlew bundleRelease --no-daemon --stacktrace
 
     - name: Verify build outputs
       run: |
-        echo "=== Vyakti AI Mobile App Build Results ==="
-        find mobile-app/android/app/build/outputs -name "*.apk" -o -name "*.aab" | sort
+        echo "=== Vyakti AI Build Results ==="
+        find android/app/build/outputs -name "*.apk" -o -name "*.aab" | sort
         echo ""
         echo "=== File Details ==="
-        for file in $(find mobile-app/android/app/build/outputs -name "*.apk" -o -name "*.aab"); do
+        for file in $(find android/app/build/outputs -name "*.apk" -o -name "*.aab"); do
           echo "File: $(basename $file)"
           echo "Path: $file"  
           echo "Size: $(du -h "$file" | cut -f1)"
@@ -115,31 +111,31 @@ jobs:
       uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: vyakti-ai-mobile-debug-apk
-        path: mobile-app/android/app/build/outputs/apk/debug/*.apk
+        name: vyakti-ai-debug-apk-final
+        path: android/app/build/outputs/apk/debug/*.apk
         retention-days: 7
 
     - name: Upload Release APK - Vyakti AI  
       uses: actions/upload-artifact@v4
       if: success()
       with:
-        name: vyakti-ai-mobile-release-apk
-        path: mobile-app/android/app/build/outputs/apk/release/*.apk
+        name: vyakti-ai-release-apk-final
+        path: android/app/build/outputs/apk/release/*.apk
         retention-days: 14
 
     - name: Upload Release AAB - Play Store Ready
       uses: actions/upload-artifact@v4
       if: success()
       with:
-        name: vyakti-ai-mobile-aab-playstore
-        path: mobile-app/android/app/build/outputs/bundle/release/*.aab
+        name: vyakti-ai-aab-playstore-final
+        path: android/app/build/outputs/bundle/release/*.aab
         retention-days: 30
 
-    - name: Vyakti AI Mobile Build Success
+    - name: Vyakti AI Build Success
       run: |
         echo "✅ Vyakti AI mobile app build completed successfully!"
-        echo "✅ Your full-featured React Native app is now built"
-        echo "✅ APK contains all your app screens, features, and functionality"
+        echo "✅ Built from vyakti-ai-mobile-final-fixed repository"
+        echo "✅ Your complete React Native app with all features"
         echo "✅ Download artifacts from GitHub Actions tab"
         echo "✅ Test debug APK on Android phone before Play Store submission"
         echo "✅ Use AAB file for Google Play Store upload"
