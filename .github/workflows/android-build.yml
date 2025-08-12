@@ -148,6 +148,12 @@ jobs:
         cd android
         ./gradlew clean
 
+    - name: Fix React Native 0.73.6 entryFile property
+      run: |
+        sed -i 's/entryFile = "index.js"/entryFile = file("..\/index.js")/' android/app/build.gradle
+        echo "=== Fixed build.gradle entry file ==="
+        head -15 android/app/build.gradle
+
     - name: Build Release APK
       run: |
         cd android
