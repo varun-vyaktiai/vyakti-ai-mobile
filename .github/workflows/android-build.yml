@@ -95,7 +95,7 @@ jobs:
     - name: Create React Native Compatible Gradle Properties
       run: |
         cat > android/gradle.properties << 'EOF'
-        org.gradle.jvmargs=-Xmx4096M -XX:MaxPermSize=512m
+        org.gradle.jvmargs=-Xmx4096M -XX:+UseG1GC
         org.gradle.daemon=false
         android.useAndroidX=true
         android.enableJetifier=true
@@ -187,7 +187,7 @@ jobs:
 
         dependencies {
             implementation fileTree(dir: "libs", include: ["*.jar"])
-            implementation 'androidx.multidex:multidx:2.0.1'
+            implementation 'androidx.multidex:multidex:2.0.1'
             implementation 'com.facebook.react:react-android'
             implementation 'com.facebook.react:flipper-integration'
             
