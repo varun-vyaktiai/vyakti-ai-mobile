@@ -1,4 +1,4 @@
-name: Build Vyakti AI React Native 0.73.6 (Ultimate Fix)
+name: Build Vyakti AI React Native 0.73.6 (Clean Syntax)
 
 on:
   push:
@@ -33,29 +33,21 @@ jobs:
         cmdline-tools-version: 11076708
         packages: "platform-tools platforms;android-35 build-tools;35.0.0 ndk;25.1.8937393"
 
-    - name: Install Gradle Directly (Bypass Corrupted Wrapper)
+    - name: Install Gradle 8.1.1 Directly
       run: |
-        echo "Installing Gradle 8.1.1 directly to bypass wrapper issues..."
         wget -q https://services.gradle.org/distributions/gradle-8.1.1-bin.zip
         unzip -q gradle-8.1.1-bin.zip
         sudo mv gradle-8.1.1 /opt/gradle
-        echo "export PATH=/opt/gradle/bin:\$PATH" >> $GITHUB_ENV
-        export PATH=/opt/gradle/bin:$PATH
-        gradle --version
+        echo "/opt/gradle/bin" >> $GITHUB_PATH
 
-    - name: Install React Native Dependencies
+    - name: Install Dependencies
       run: npm install --legacy-peer-deps
 
-    - name: Fix React Native 0.73.6 Complete Configuration
+    - name: Create Android Configuration (No Classpath Issues)
       run: |
-        # Create local.properties
         echo "sdk.dir=$ANDROID_HOME" > android/local.properties
         
-        # Create the complete React Native 0.73.6 build configuration
-        # This includes BOTH the buildscript AND the React Native root project plugin
         cat > android/build.gradle << 'EOF'
-        // Top-level build file where you can add configuration options common to all sub-projects/modules.
-
         buildscript {
             ext {
                 buildToolsVersion = "35.0.0"
@@ -68,47 +60,29 @@ jobs:
             repositories {
                 google()
                 mavenCentral()
-                maven { url "https://www.jitpack.io" }
-                maven { url "https://repo1.maven.org/maven2/" }
             }
             dependencies {
-                classpath("com.android.tools.build:gradle:8.1.1")
-                classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
-                // NOTE: React Native 0.73.6 has built-in gradle plugin, no classpath needed
+                classpath 'com.android.tools.build:gradle:8.1.1'
+                classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
             }
         }
-
-        // CRITICAL: Apply the React Native root project plugin
-        apply plugin: "com.facebook.react.rootproject"
 
         allprojects {
             repositories {
                 google()
                 mavenCentral()
-                maven { url "https://www.jitpack.io" }
-                maven { url "https://repo1.maven.org/maven2/" }
             }
         }
         EOF
-        
-        # Create proper gradle.properties
+
+    - name: Create Gradle Properties
+      run: |
         cat > android/gradle.properties << 'EOF'
-        # Project-wide Gradle settings
-        org.gradle.jvmargs=-Xmx4096M -XX:MaxMetaspaceSize=512m
-        org.gradle.daemon=false
-        org.gradle.parallel=false
-        
-        # Android settings
+        org.gradle.jvmargs=-Xmx4096M
         android.useAndroidX=true
         android.enableJetifier=true
-        android.enableR8.fullMode=true
-        
-        # React Native settings
         hermesEnabled=true
         newArchEnabled=false
-        
-        # Flipper version
-        FLIPPER_VERSION=0.182.0
         EOF
 
     - name: Create Debug Keystore
@@ -121,77 +95,32 @@ jobs:
             -dname "CN=Android Debug,O=Android,C=US"
         fi
 
-    - name: Test Configuration (Complete React Native Setup)
-      working-directory: android
-      run: |
-        echo "Testing React Native 0.73.6 with complete configuration..."
-        export PATH=/opt/gradle/bin:$PATH
-        gradle tasks --no-daemon --stacktrace
-
-    - name: Clean Build
-      working-directory: android
-      run: |
-        export PATH=/opt/gradle/bin:$PATH
-        gradle clean --no-daemon --stacktrace
-
     - name: Build Debug APK
       working-directory: android
-      run: |
-        export PATH=/opt/gradle/bin:$PATH
-        gradle assembleDebug --no-daemon --stacktrace
+      run: gradle :app:assembleDebug --no-daemon
 
-    - name: Build Release APK
+    - name: Build Release APK  
       working-directory: android
-      run: |
-        export PATH=/opt/gradle/bin:$PATH
-        gradle assembleRelease --no-daemon --stacktrace
+      run: gradle :app:assembleRelease --no-daemon
 
-    - name: Build Release AAB
+    - name: Build AAB
       working-directory: android
-      run: |
-        export PATH=/opt/gradle/bin:$PATH
-        gradle bundleRelease --no-daemon --stacktrace
-
-    - name: Verify Build Results
-      run: |
-        echo "=== Vyakti AI React Native 0.73.6 Build Complete ==="
-        find android/app/build/outputs -name "*.apk" -o -name "*.aab" | sort
-        echo ""
-        echo "=== Build Artifacts ==="
-        for file in $(find android/app/build/outputs -name "*.apk" -o -name "*.aab"); do
-          echo "$(basename $file): $(du -h "$file" | cut -f1)"
-        done
+      run: gradle :app:bundleRelease --no-daemon
 
     - name: Upload Debug APK
       uses: actions/upload-artifact@v4
       with:
-        name: vyakti-ai-debug-ultimate
+        name: vyakti-ai-debug-clean
         path: android/app/build/outputs/apk/debug/*.apk
-        retention-days: 7
 
     - name: Upload Release APK
       uses: actions/upload-artifact@v4
       with:
-        name: vyakti-ai-release-ultimate
+        name: vyakti-ai-release-clean
         path: android/app/build/outputs/apk/release/*.apk
-        retention-days: 14
 
-    - name: Upload Play Store AAB
+    - name: Upload AAB
       uses: actions/upload-artifact@v4
       with:
-        name: vyakti-ai-playstore-ultimate
+        name: vyakti-ai-playstore-clean
         path: android/app/build/outputs/bundle/release/*.aab
-        retention-days: 30
-
-    - name: Build Success
-      run: |
-        echo "✅ Vyakti AI React Native 0.73.6 app built successfully!"
-        echo "✅ Fixed missing React Native root project plugin"
-        echo "✅ Used direct Gradle installation (bypassed corrupted wrapper)"
-        echo "✅ Complete React Native 0.73.6 build configuration applied"
-        echo "✅ Generated production-ready APK and AAB files"
-        echo ""
-        echo "📱 Your complete mobile app is ready:"
-        echo "• vyakti-ai-debug-ultimate (for testing)"
-        echo "• vyakti-ai-release-ultimate (for distribution)"  
-        echo "• vyakti-ai-playstore-ultimate (for Google Play Store)"
