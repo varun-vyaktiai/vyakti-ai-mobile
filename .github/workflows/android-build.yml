@@ -1,35 +1,47 @@
 name: Build Vyakti AI Android APK
+
 on:
   push:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
+
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '18'
-        cache: 'npm'
-    - name: Install dependencies
-      run: npm install
+
+    - name: Install dependencies and create lock file
+      run: |
+        echo "Installing dependencies..."
+        npm install
+        echo "Lock file created successfully"
+        ls -la package*.json
+
     - name: Setup Java 17
       uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
         java-version: '17'
+
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
       with:
         api-level: 35
         build-tools: 35.0.0
         ndk-version: 25.1.8937393
+
     - name: Create Android local.properties
       run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
+
     - name: Fix android/build.gradle - Add missing repositories
       run: |
         echo "Original build.gradle:"
@@ -38,6 +50,7 @@ jobs:
         # Create fixed build.gradle with repositories in buildscript
         cat > android/build.gradle << 'EOF'
         // Top-level build file where you can add configuration options common to all sub-projects/modules.
+
         buildscript {
             ext {
                 buildToolsVersion = "35.0.0"
@@ -58,7 +71,9 @@ jobs:
                 classpath("org.jetbrains.kotlin:kotlin-gradle-plugin")
             }
         }
+
         apply plugin: "com.facebook.react.rootproject"
+
         allprojects {
             repositories {
                 google()
@@ -70,6 +85,7 @@ jobs:
         
         echo "Updated build.gradle:"
         cat android/build.gradle
+
     - name: Fix android/app/build.gradle - Set entryFile as file
       run: |
         echo "Fixing entryFile type for React Native 0.73.6..."
@@ -77,26 +93,33 @@ jobs:
         
         echo "After fix:"
         head -15 android/app/build.gradle
+
     - name: Make gradlew executable
       run: chmod +x android/gradlew
+
     - name: Clean project
       run: cd android && ./gradlew clean
+
     - name: Build Release APK
       run: cd android && ./gradlew assembleRelease
+
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: vyakti-ai-release-apk
         path: android/app/build/outputs/apk/release/app-release.apk
         retention-days: 30
+
     - name: Build Release AAB (Android App Bundle)
       run: cd android && ./gradlew bundleRelease
+
     - name: Upload AAB
       uses: actions/upload-artifact@v4
       with:
         name: vyakti-ai-release-aab
         path: android/app/build/outputs/bundle/release/app-release.aab
         retention-days: 30
+
     - name: Display build summary
       run: |
         echo "🎉 Build completed successfully!"
