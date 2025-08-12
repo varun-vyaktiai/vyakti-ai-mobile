@@ -10,7 +10,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
 
     steps:
     - name: Checkout repository
@@ -26,10 +26,18 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '18'
-        cache: 'npm'
 
+    # FIX ISSUE #1: Lock file absence - Create package-lock.json if missing
+    - name: Generate package-lock.json if missing
+      run: |
+        if [ ! -f package-lock.json ]; then
+          echo "Creating missing package-lock.json..."
+          npm install --package-lock-only --legacy-peer-deps
+        fi
+
+    # Install React Native dependencies with legacy peer deps to handle conflicts
     - name: Install npm dependencies
-      run: npm ci
+      run: npm ci --legacy-peer-deps
 
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
@@ -40,17 +48,27 @@ jobs:
     - name: Create Android local.properties
       run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
 
-    - name: Download and install Gradle 8.1.1
+    # FIX ISSUE #2: gradlew syntax error - Recreate gradlew wrapper completely
+    - name: Fix gradlew wrapper corruption
       run: |
+        cd android
+        # Remove potentially corrupted wrapper files
+        rm -f gradlew gradlew.bat
+        rm -rf gradle/wrapper/gradle-wrapper.jar
+        
+        # Download and install Gradle 8.1.1 directly
         curl -L -o gradle.zip https://services.gradle.org/distributions/gradle-8.1.1-bin.zip
         unzip -q gradle.zip
         sudo rm -rf /opt/gradle 2>/dev/null || true
         sudo mv gradle-8.1.1 /opt/gradle
         sudo chmod +x /opt/gradle/bin/gradle
-        echo 'export PATH="/opt/gradle/bin:$PATH"' >> $GITHUB_ENV
-        /opt/gradle/bin/gradle --version
+        
+        # Generate fresh wrapper using installed Gradle
+        /opt/gradle/bin/gradle wrapper --gradle-version 8.1.1
+        chmod +x gradlew
 
-    - name: Fix build.gradle with all repositories
+    # FIX ISSUE #3: Repository files missing - Rebuild build.gradle with complete repositories
+    - name: Fix missing repositories in build.gradle
       run: |
         cd android
         cat > build.gradle << 'EOF'
@@ -73,6 +91,12 @@ jobs:
                 maven { url "https://plugins.gradle.org/m2/" }
                 maven { url "https://maven.google.com" }
                 gradlePluginPortal()
+                jcenter() {
+                    content {
+                        includeModule("com.yqritc", "Android-ScalableVideoView")
+                        includeModule("com.facebook.react", "react-native")
+                    }
+                }
             }
             dependencies {
                 classpath("com.android.tools.build:gradle:8.1.1")
@@ -92,29 +116,64 @@ jobs:
                 maven { url "https://plugins.gradle.org/m2/" }
                 maven { url "https://maven.google.com" }
                 gradlePluginPortal()
+                jcenter() {
+                    content {
+                        includeModule("com.yqritc", "Android-ScalableVideoView")
+                        includeModule("com.facebook.react", "react-native")
+                    }
+                }
+                // Additional React Native specific repositories
+                maven { url "https://oss.sonatype.org/content/repositories/snapshots/" }
+                flatDir {
+                    dirs 'libs'
+                }
             }
         }
         EOF
 
-    - name: Test Gradle dependency resolution
+    # FIX ISSUE #4: SDK compilation error - Pre-validate all dependencies
+    - name: Validate Gradle configuration
       run: |
         cd android
-        /opt/gradle/bin/gradle dependencies --configuration classpath
+        echo "Testing Gradle dependency resolution..."
+        ./gradlew dependencies --configuration classpath || {
+            echo "Dependency resolution failed, attempting fix..."
+            # Clear Gradle cache
+            rm -rf ~/.gradle/caches/
+            ./gradlew --refresh-dependencies dependencies --configuration classpath
+        }
 
-    - name: Clean project
+    - name: Clean project before build
       run: |
         cd android
-        /opt/gradle/bin/gradle clean --no-daemon
+        ./gradlew clean --no-daemon --stacktrace
 
-    - name: Build Release APK
+    # Build with detailed logging for debugging
+    - name: Build Release APK with detailed logging
       run: |
         cd android
-        /opt/gradle/bin/gradle assembleRelease --no-daemon --stacktrace
+        ./gradlew assembleRelease --no-daemon --stacktrace --info --warning-mode all
 
     - name: Build Release AAB
       run: |
         cd android
-        /opt/gradle/bin/gradle bundleRelease --no-daemon
+        ./gradlew bundleRelease --no-daemon --stacktrace
+
+    # Verify build outputs exist before upload
+    - name: Verify build outputs
+      run: |
+        ls -la android/app/build/outputs/apk/release/
+        ls -la android/app/build/outputs/bundle/release/
+        
+        if [ ! -f android/app/build/outputs/apk/release/app-release.apk ]; then
+          echo "ERROR: APK not found!"
+          exit 1
+        fi
+        
+        if [ ! -f android/app/build/outputs/bundle/release/app-release.aab ]; then
+          echo "ERROR: AAB not found!"
+          exit 1
+        fi
 
     - name: Upload Release APK
       uses: actions/upload-artifact@v4
@@ -132,7 +191,12 @@ jobs:
 
     - name: Build Success Summary
       run: |
-        echo "Build completed successfully!"
-        echo "APK: android/app/build/outputs/apk/release/app-release.apk"
-        echo "AAB: android/app/build/outputs/bundle/release/app-release.aab"
-        echo "Ready for Google Play Store submission"
+        echo "✅ Build completed successfully!"
+        echo "📱 APK: android/app/build/outputs/apk/release/app-release.apk"
+        echo "📦 AAB: android/app/build/outputs/bundle/release/app-release.aab"
+        echo "🚀 Ready for Google Play Store submission"
+        
+        APK_SIZE=$(du -h android/app/build/outputs/apk/release/app-release.apk | cut -f1)
+        AAB_SIZE=$(du -h android/app/build/outputs/bundle/release/app-release.aab | cut -f1)
+        echo "📊 APK Size: $APK_SIZE"
+        echo "📊 AAB Size: $AAB_SIZE"
