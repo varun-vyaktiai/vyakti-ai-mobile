@@ -40,6 +40,46 @@ jobs:
     - name: Create Android local.properties
       run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
 
+    - name: Fix android/build.gradle repositories
+      run: |
+        cat > android/build.gradle << 'EOF'
+        buildscript {
+            ext {
+                buildToolsVersion = "35.0.0"
+                minSdkVersion = 24
+                compileSdkVersion = 35
+                targetSdkVersion = 35
+                ndkVersion = "25.1.8937393"
+                kotlinVersion = "1.8.10"
+            }
+            repositories {
+                google()
+                mavenCentral()
+                maven { url "https://www.jitpack.io" }
+            }
+            dependencies {
+                classpath("com.android.tools.build:gradle:8.1.1")
+                classpath("com.facebook.react:react-native-gradle-plugin")
+                classpath("org.jetbrains.kotlin:kotlin-gradle-plugin")
+            }
+        }
+
+        apply plugin: "com.facebook.react.rootproject"
+
+        allprojects {
+            repositories {
+                google()
+                mavenCentral()
+                maven { url "https://www.jitpack.io" }
+                maven { url "https://maven.google.com" }
+                maven {
+                    url("$rootDir/../node_modules/react-native/android")
+                }
+            }
+        }
+        EOF
+        echo "Fixed android/build.gradle with proper repositories"
+
     - name: Fix gradlew shell compatibility and make executable
       run: |
         # Fix the HERE-doc syntax issue in gradlew line 210
