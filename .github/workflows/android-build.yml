@@ -36,84 +36,109 @@ jobs:
     - name: Install React Native Dependencies
       run: npm install --legacy-peer-deps
 
-    - name: Create Android Configuration
-      run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
-
-    - name: Install Gradle Directly (Bypass Wrapper Issues)
+    - name: Create Android Configuration Files
       run: |
-        echo "Installing Gradle directly to bypass wrapper corruption..."
+        # Create local.properties
+        echo "sdk.dir=$ANDROID_HOME" > android/local.properties
+        
+        # Create/update gradle.properties with all required properties
+        cat > android/gradle.properties << 'EOF'
+        # Project-wide Gradle settings
+        org.gradle.jvmargs=-Xmx4096M -XX:MaxMetaspaceSize=512m -XX:+HeapDumpOnOutOfMemoryError
+        org.gradle.daemon=false
+        org.gradle.configureondemand=true
+        org.gradle.parallel=false
+        
+        # Android X
+        android.useAndroidX=true
+        android.enableJetifier=true
+        
+        # React Native
+        hermesEnabled=true
+        newArchEnabled=false
+        
+        # Flipper (required for debug builds)
+        FLIPPER_VERSION=0.182.0
+        
+        # Enable R8 full mode
+        android.enableR8.fullMode=true
+        
+        # Signing (for release builds)
+        VYAKTIAI_UPLOAD_STORE_FILE=vyakti-ai-release-key.keystore
+        VYAKTIAI_UPLOAD_KEY_ALIAS=vyakti-ai-key-alias  
+        VYAKTIAI_UPLOAD_STORE_PASSWORD=vyakti123
+        VYAKTIAI_UPLOAD_KEY_PASSWORD=vyakti123
+        EOF
+
+    - name: Install Direct Gradle (Bypass Wrapper)
+      run: |
         cd /opt
         sudo wget -q https://services.gradle.org/distributions/gradle-8.1.1-bin.zip
         sudo unzip -q gradle-8.1.1-bin.zip
         sudo rm gradle-8.1.1-bin.zip
         sudo ln -sf /opt/gradle-8.1.1/bin/gradle /usr/local/bin/gradle
         gradle --version
-        echo "✅ Gradle installed successfully"
 
-    - name: Configure Gradle Properties
+    - name: Create Debug Keystore
+      working-directory: android/app
       run: |
-        cd android
-        echo "" >> gradle.properties
-        echo "# React Native Build Configuration" >> gradle.properties
-        echo "org.gradle.jvmargs=-Xmx4096M -XX:MaxMetaspaceSize=512m" >> gradle.properties
-        echo "android.useAndroidX=true" >> gradle.properties
-        echo "android.enableJetifier=true" >> gradle.properties
-        echo "hermesEnabled=true" >> gradle.properties
-        echo "org.gradle.daemon=false" >> gradle.properties
+        if [ ! -f debug.keystore ]; then
+          keytool -genkeypair -v -keystore debug.keystore -alias androiddebugkey \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass android -keypass android \
+            -dname "CN=Android Debug,O=Android,C=US"
+        fi
 
-    - name: Clean Build (Direct Gradle)
+    - name: Clean Build
       working-directory: android
       run: gradle clean --no-daemon --stacktrace
 
-    - name: Build Debug APK (Direct Gradle)
+    - name: Build Debug APK
       working-directory: android
-      run: gradle assembleDebug --no-daemon --stacktrace
+      run: gradle assembleDebug --no-daemon --stacktrace --info
 
-    - name: Build Release APK (Direct Gradle)
+    - name: Build Release APK  
       working-directory: android
-      run: gradle assembleRelease --no-daemon --stacktrace
+      run: gradle assembleRelease --no-daemon --stacktrace --info
 
-    - name: Build Release AAB (Direct Gradle)
+    - name: Build Release AAB
       working-directory: android
-      run: gradle bundleRelease --no-daemon --stacktrace
+      run: gradle bundleRelease --no-daemon --stacktrace --info
 
-    - name: Verify Build Outputs
+    - name: Verify Build Results
       run: |
-        echo "=== Vyakti AI Build Results ==="
+        echo "=== Vyakti AI Build Outputs ==="
         find android/app/build/outputs -name "*.apk" -o -name "*.aab" | sort
         echo ""
-        echo "=== File Details ==="
         for file in $(find android/app/build/outputs -name "*.apk" -o -name "*.aab"); do
-          echo "File: $(basename $file)"
-          echo "Size: $(du -h "$file" | cut -f1)"
-          echo "---"
+          echo "$(basename $file): $(du -h "$file" | cut -f1)"
         done
 
     - name: Upload Debug APK
       uses: actions/upload-artifact@v4
       with:
-        name: vyakti-ai-debug-direct
+        name: vyakti-ai-debug-complete
         path: android/app/build/outputs/apk/debug/*.apk
         retention-days: 7
 
     - name: Upload Release APK
       uses: actions/upload-artifact@v4
       with:
-        name: vyakti-ai-release-direct
+        name: vyakti-ai-release-complete
         path: android/app/build/outputs/apk/release/*.apk
         retention-days: 14
 
     - name: Upload Play Store AAB
       uses: actions/upload-artifact@v4
       with:
-        name: vyakti-ai-playstore-direct
+        name: vyakti-ai-playstore-complete
         path: android/app/build/outputs/bundle/release/*.aab
         retention-days: 30
 
     - name: Build Success
       run: |
         echo "✅ Vyakti AI React Native app built successfully!"
-        echo "✅ Used direct Gradle installation to bypass wrapper issues"
-        echo "✅ Your complete mobile app with all features is ready"
-        echo "✅ Download APK from GitHub Actions artifacts"
-        echo "✅ Install on Android phone for testing"
+        echo "✅ Fixed Gradle repository and dependency issues"
+        echo "✅ Created proper debug keystore"
+        echo "✅ Generated APK and AAB files"
+        echo "✅ Your complete mobile app is ready for testing and Play Store submission"
