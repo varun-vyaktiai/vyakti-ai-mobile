@@ -37,6 +37,9 @@ jobs:
     - name: Install npm dependencies
       run: npm ci --legacy-peer-deps
 
+    - name: Install ImageMagick for icon creation
+      run: sudo apt-get update && sudo apt-get install -y imagemagick
+
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
       with:
@@ -179,6 +182,31 @@ jobs:
         </resources>
         THEMES_EOF
 
+    - name: Create app launcher icons
+      run: |
+        cd android/app/src/main/res
+        # Create simple launcher icons using ImageMagick
+        for density in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+          case $density in
+            mdpi) size=48;;
+            hdpi) size=72;;
+            xhdpi) size=96;;
+            xxhdpi) size=144;;
+            xxxhdpi) size=192;;
+          esac
+          # Create a simple blue circle icon
+          convert -size ${size}x${size} xc:transparent \
+            -fill "#2196F3" -draw "circle $((size/2)),$((size/2)) $((size/2)),10" \
+            -fill white -pointsize $((size/3)) -gravity center -annotate +0+0 "V" \
+            mipmap-${density}/ic_launcher.png || echo "ImageMagick not available, using placeholder"
+          
+          # Fallback if ImageMagick fails - create empty files that Android can handle
+          if [ ! -f "mipmap-${density}/ic_launcher.png" ]; then
+            # Create minimal valid PNG (1x1 transparent pixel)
+            echo -ne '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\rIDATx\x9cc\xf8\x0f\x00\x00\x01\x00\x01\x00\x18\xdd\x8d\xb4\x00\x00\x00\x00IEND\xaeB`\x82' > mipmap-${density}/ic_launcher.png
+          fi
+        done
+
     - name: Create basic AndroidManifest.xml
       run: |
         cd android/app/src/main
@@ -190,7 +218,7 @@ jobs:
 
             <application
                 android:allowBackup="true"
-                android:icon="@android:drawable/ic_launcher_foreground"
+                android:icon="@mipmap/ic_launcher"
                 android:label="@string/app_name"
                 android:theme="@style/Theme.VyaktiAI">
                 <activity
