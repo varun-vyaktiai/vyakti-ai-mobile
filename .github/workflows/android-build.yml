@@ -40,18 +40,25 @@ jobs:
     - name: Create local.properties
       run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
 
-    - name: Make Gradle wrapper executable
-      run: chmod +x android/gradlew
+    - name: Fix Gradle Wrapper
+      run: |
+        cd android
+        # Convert line endings and set permissions
+        dos2unix gradlew 2>/dev/null || true
+        chmod +x gradlew
+        # Verify the file
+        file gradlew
+        head -1 gradlew
 
     - name: Build APK
       run: |
         cd android
-        ./gradlew clean assembleRelease
+        bash gradlew clean assembleRelease --stacktrace
 
     - name: Build AAB
       run: |
         cd android
-        ./gradlew bundleRelease
+        bash gradlew bundleRelease --stacktrace
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
