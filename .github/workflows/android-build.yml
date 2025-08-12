@@ -41,48 +41,44 @@ jobs:
     - name: Create Android local.properties
       run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
 
-    - name: Fix android/build.gradle - Add missing repositories
+    - name: Fix android/build.gradle for React Native 0.73.6
       run: |
         echo "Original build.gradle:"
         cat android/build.gradle
         
-        # Create fixed build.gradle with repositories in buildscript
+        # Create corrected build.gradle without React Native Gradle plugin
         cat > android/build.gradle << 'EOF'
-        // Top-level build file where you can add configuration options common to all sub-projects/modules.
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
 
-        buildscript {
-            ext {
-                buildToolsVersion = "35.0.0"
-                minSdkVersion = 24
-                compileSdkVersion = 35
-                targetSdkVersion = 35
-                ndkVersion = "25.1.8937393"
-                kotlinVersion = "1.8.10"
-            }
-            repositories {
-                google()
-                mavenCentral()
-                maven { url "https://www.jitpack.io" }
-                maven { url "https://repo1.maven.org/maven2/" }
-            }
-            dependencies {
-                classpath("com.android.tools.build:gradle:8.1.1")
-                classpath("com.facebook.react:react-native-gradle-plugin")
-                classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
-            }
-        }
+buildscript {
+    ext {
+        buildToolsVersion = "35.0.0"
+        minSdkVersion = 24
+        compileSdkVersion = 35
+        targetSdkVersion = 35
+        ndkVersion = "25.1.8937393"
+        kotlinVersion = "1.8.10"
+    }
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath("com.android.tools.build:gradle:8.1.1")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
+    }
+}
 
-        apply plugin: "com.facebook.react.rootproject"
+apply plugin: "com.facebook.react.rootproject"
 
-        allprojects {
-            repositories {
-                google()
-                mavenCentral()
-                maven { url "https://www.jitpack.io" }
-                maven { url "https://repo1.maven.org/maven2/" }
-            }
-        }
-        EOF
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url "https://www.jitpack.io" }
+    }
+}
+EOF
         
         echo "Updated build.gradle:"
         cat android/build.gradle
@@ -111,20 +107,20 @@ jobs:
         if [ ! -f gradle/wrapper/gradle-wrapper.properties ]; then
           echo "Creating gradle-wrapper.properties..."
           cat > gradle/wrapper/gradle-wrapper.properties << 'EOF'
-        distributionBase=GRADLE_USER_HOME
-        distributionPath=wrapper/dists
-        distributionUrl=https\://services.gradle.org/distributions/gradle-8.1.1-bin.zip
-        zipStoreBase=GRADLE_USER_HOME
-        zipStorePath=wrapper/dists
-        EOF
+distributionBase=GRADLE_USER_HOME
+distributionPath=wrapper/dists
+distributionUrl=https\://services.gradle.org/distributions/gradle-8.1.1-bin.zip
+zipStoreBase=GRADLE_USER_HOME
+zipStorePath=wrapper/dists
+EOF
         fi
         
         # Create simple working gradlew script
         echo "Creating gradlew script..."
         cat > gradlew << 'GRADLEW_EOF'
-        #!/bin/sh
-        java -cp "gradle/wrapper/gradle-wrapper.jar" org.gradle.wrapper.GradleWrapperMain "$@"
-        GRADLEW_EOF
+#!/bin/sh
+java -cp "gradle/wrapper/gradle-wrapper.jar" org.gradle.wrapper.GradleWrapperMain "$@"
+GRADLEW_EOF
         
         chmod +x gradlew
         
