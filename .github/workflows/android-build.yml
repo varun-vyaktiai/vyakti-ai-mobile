@@ -61,9 +61,9 @@ jobs:
                 maven { url "https://www.jitpack.io" }
             }
             dependencies {
-                classpath 'com.android.tools.build:gradle:8.1.1'
+                classpath 'com.android.tools.build:gradle:7.4.2'
+                classpath 'com.facebook.react:react-native-gradle-plugin'
                 classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.8.10'
-                // Note: React Native gradle plugin is loaded via settings.gradle
             }
         }
 
@@ -103,40 +103,27 @@ jobs:
         echo "After fix:"
         head -15 android/app/build.gradle
 
-    - name: Create proper settings.gradle for React Native 0.73.6
+    - name: Create simplified settings.gradle
       run: |
         cat > android/settings.gradle << 'EOF'
-        pluginManagement {
-            repositories {
-                google()
-                mavenCentral()
-                gradlePluginPortal()
-            }
-        }
-        dependencyResolutionManagement {
-            repositoriesMode.set(RepositoriesMode.PREFER_PROJECT)
-            repositories {
-                google()
-                mavenCentral()
-                maven { url "https://www.jitpack.io" }
-            }
-        }
-
         rootProject.name = 'VyaktiAI'
         include ':app'
-        includeBuild('../node_modules/@react-native/gradle-plugin')
 
         apply from: file("../node_modules/@react-native-community/cli-platform-android/native_modules.gradle"); applyNativeModulesSettingsGradle(settings)
         EOF
 
-    - name: Create gradle wrapper if missing
+    - name: Setup compatible Gradle wrapper
       run: |
         cd android
-        if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
-          echo "Creating gradle wrapper..."
-          # Use gradle directly to create wrapper
-          gradle wrapper --gradle-version=8.0 --distribution-type=bin
-        fi
+        # Download and setup Gradle 7.6.4 which is compatible with React Native 0.73.6
+        wget -q https://services.gradle.org/distributions/gradle-7.6.4-bin.zip
+        unzip -q gradle-7.6.4-bin.zip
+        
+        # Create gradle wrapper with compatible version
+        ./gradle-7.6.4/bin/gradle wrapper --gradle-version=7.6.4
+        
+        # Ensure gradle-wrapper.properties has correct version
+        echo "distributionUrl=https\://services.gradle.org/distributions/gradle-7.6.4-bin.zip" > gradle/wrapper/gradle-wrapper.properties
 
     - name: Clean and build APK
       run: |
