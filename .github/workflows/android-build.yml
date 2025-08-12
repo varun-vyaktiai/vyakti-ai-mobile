@@ -37,11 +37,13 @@ jobs:
     - name: Install Node dependencies
       run: npm install --legacy-peer-deps
 
-    - name: Create missing Android configuration files
+    - name: Create Android local.properties
+      run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
+
+    - name: Create missing settings.gradle if needed
       run: |
-        echo "sdk.dir=$ANDROID_HOME" > android/local.properties
-        
-        cat > android/settings.gradle << 'EOF'
+        if [ ! -f android/settings.gradle ]; then
+          cat > android/settings.gradle << 'EOF'
         pluginManagement {
             repositories {
                 google()
@@ -63,16 +65,10 @@ jobs:
         includeBuild('../node_modules/@react-native/gradle-plugin')
 
         apply from: file("../node_modules/@react-native-community/cli-platform-android/native_modules.gradle"); applyNativeModulesSettingsGradle(settings)
-
-        if (settings.hasProperty("newArchEnabled") && settings.newArchEnabled == "true") {
-            include(":ReactAndroid")
-            project(":ReactAndroid").projectDir = file("../node_modules/react-native/ReactAndroid")
-            include(":ReactAndroid:hermes-engine")
-            project(":ReactAndroid:hermes-engine").projectDir = file("../node_modules/react-native/ReactAndroid/hermes-engine")
-        }
         EOF
+        fi
 
-    - name: Fix Android root build.gradle for React Native 0.73.6
+    - name: Update build.gradle for React Native 0.73.6
       run: |
         cat > android/build.gradle << 'EOF'
         buildscript {
@@ -111,14 +107,7 @@ jobs:
         }
         EOF
 
-    - name: Create missing Android keystore
-      run: |
-        cd android/app
-        if [ ! -f debug.keystore ]; then
-            keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "C=US, O=Android, CN=Android Debug"
-        fi
-
-    - name: Create gradle.properties for React Native 0.73.6
+    - name: Update gradle.properties
       run: |
         cat > android/gradle.properties << 'EOF'
         org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m
@@ -136,44 +125,52 @@ jobs:
         org.gradle.daemon=true
         EOF
 
-    - name: Setup Gradle Wrapper
+    - name: Create debug keystore
+      run: |
+        cd android/app
+        if [ ! -f debug.keystore ]; then
+            keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "C=US, O=Android, CN=Android Debug"
+        fi
+
+    - name: Make gradlew executable and setup wrapper
       run: |
         cd android
-        wget https://services.gradle.org/distributions/gradle-8.0-bin.zip
-        unzip -q gradle-8.0-bin.zip
-        export PATH=$PWD/gradle-8.0/bin:$PATH
-        if [ ! -f gradlew ]; then
-            gradle wrapper --gradle-version=8.0
-        fi
         chmod +x gradlew
+        if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
+          wget https://services.gradle.org/distributions/gradle-8.0-bin.zip
+          unzip -q gradle-8.0-bin.zip
+          export PATH=$PWD/gradle-8.0/bin:$PATH
+          gradle wrapper --gradle-version=8.0
+        fi
 
-    - name: Clean and Build APK
+    - name: Clean project
       run: |
         cd android
         ./gradlew clean
+
+    - name: Build Release APK
+      run: |
+        cd android
         ./gradlew assembleRelease --stacktrace --info
 
-    - name: Build AAB
+    - name: Build Release AAB
       run: |
         cd android
         ./gradlew bundleRelease --stacktrace
 
+    - name: List build outputs
+      run: |
+        echo "=== Checking build outputs ==="
+        find android/app/build/outputs -type f -name "*.apk" -o -name "*.aab" | head -10
+
     - name: Upload APK Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: android-apk-artifacts
-        path: |
-          android/app/build/outputs/apk/release/*.apk
+        name: vyakti-ai-apk
+        path: android/app/build/outputs/apk/release/*.apk
 
-    - name: Upload AAB Artifact
+    - name: Upload AAB Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: android-aab-artifact
-        path: android/app/build/outputs/bundle/release/app-release.aab
-
-    - name: List build outputs
-      run: |
-        echo "=== APK Files ==="
-        find android/app/build/outputs/apk/release -name "*.apk" -exec ls -la {} \;
-        echo "=== AAB Files ==="
-        find android/app/build/outputs/bundle/release -name "*.aab" -exec ls -la {} \;
+        name: vyakti-ai-aab
+        path: android/app/build/outputs/bundle/release/*.aab
