@@ -1,4 +1,4 @@
-name: Build Vyakti AI React Native 0.73.6 (Final Fixed)
+name: Build Vyakti AI React Native 0.73.6 (Direct Build)
 
 on:
   push:
@@ -43,11 +43,20 @@ jobs:
     - name: Install Dependencies
       run: npm install --legacy-peer-deps
 
-    - name: Create Safe Android Configuration (NO Previous Error Sources)
+    - name: Create Complete React Native Project Structure
       run: |
         echo "sdk.dir=$ANDROID_HOME" > android/local.properties
         
-        # Using ONLY the classpath syntax that works - NO experimental features
+        # Create settings.gradle that defines the project structure
+        cat > android/settings.gradle << 'EOF'
+        rootProject.name = 'VyaktiAI'
+        include ':app'
+        
+        apply from: file("../node_modules/@react-native-community/cli-platform-android/native_modules.gradle")
+        applyNativeModulesSettingsGradle(settings)
+        EOF
+        
+        # Create root build.gradle with minimal dependencies
         cat > android/build.gradle << 'EOF'
         buildscript {
             ext {
@@ -73,6 +82,7 @@ jobs:
                 google()
                 mavenCentral()
                 maven { url 'https://www.jitpack.io' }
+                maven { url 'https://maven.google.com' }
             }
         }
         EOF
@@ -98,36 +108,56 @@ jobs:
             -dname "CN=Android Debug,O=Android,C=US"
         fi
 
-    - name: Test Project Structure
+    - name: Verify Project Structure
       working-directory: android
-      run: gradle projects --no-daemon
+      run: |
+        echo "=== Gradle Projects ==="
+        gradle projects --no-daemon
+        echo "=== Available Tasks ==="
+        gradle :app:tasks --no-daemon
 
     - name: Build Debug APK
       working-directory: android
-      run: gradle app:assembleDebug --no-daemon
+      run: gradle :app:assembleDebug --no-daemon --stacktrace
 
-    - name: Build Release APK  
+    - name: Build Release APK
       working-directory: android
-      run: gradle app:assembleRelease --no-daemon
+      run: gradle :app:assembleRelease --no-daemon --stacktrace
 
-    - name: Build AAB
+    - name: Build Release AAB
       working-directory: android
-      run: gradle app:bundleRelease --no-daemon
+      run: gradle :app:bundleRelease --no-daemon --stacktrace
+
+    - name: List Build Outputs
+      run: |
+        echo "=== Build Results ==="
+        find android/app/build/outputs -name "*.apk" -o -name "*.aab" | sort
+        for file in $(find android/app/build/outputs -name "*.apk" -o -name "*.aab"); do
+          echo "$(basename $file): $(du -h "$file" | cut -f1)"
+        done
 
     - name: Upload Debug APK
       uses: actions/upload-artifact@v4
       with:
-        name: vyakti-ai-debug-fixed
+        name: vyakti-ai-debug-direct
         path: android/app/build/outputs/apk/debug/*.apk
 
     - name: Upload Release APK
       uses: actions/upload-artifact@v4
       with:
-        name: vyakti-ai-release-fixed
+        name: vyakti-ai-release-direct
         path: android/app/build/outputs/apk/release/*.apk
 
-    - name: Upload AAB
+    - name: Upload Release AAB
       uses: actions/upload-artifact@v4
       with:
-        name: vyakti-ai-playstore-fixed
+        name: vyakti-ai-playstore-direct
         path: android/app/build/outputs/bundle/release/*.aab
+
+    - name: Success Summary
+      run: |
+        echo "✅ Vyakti AI React Native 0.73.6 build successful!"
+        echo "✅ Created complete project structure with settings.gradle"
+        echo "✅ Debug APK: vyakti-ai-debug-direct"
+        echo "✅ Release APK: vyakti-ai-release-direct"
+        echo "✅ Play Store AAB: vyakti-ai-playstore-direct"
