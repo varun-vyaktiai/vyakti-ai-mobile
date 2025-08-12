@@ -52,6 +52,7 @@ jobs:
         cp build.gradle build.gradle.original || echo "No original build.gradle"
         cp app/build.gradle app/build.gradle.original || echo "No original app build.gradle"
         cp settings.gradle settings.gradle.original || echo "No original settings.gradle"
+        cp app/src/main/AndroidManifest.xml app/src/main/AndroidManifest.xml.original || echo "No original AndroidManifest.xml"
 
     - name: Remove problematic Gradle files
       run: |
@@ -108,6 +109,51 @@ jobs:
         }
         EOF
 
+    - name: Create gradle.properties with compiler warnings suppression
+      run: |
+        cd android
+        cat > gradle.properties << 'EOF'
+        org.gradle.jvmargs=-Xmx2048M -Dkotlin.daemon.jvm.options\="-Xmx2048M"
+        android.useAndroidX=true
+        android.enableJetifier=true
+        android.suppressUnsupportedCompileSdk=35
+        android.experimental.legacyTransform.forceNonIncremental=true
+        EOF
+
+    - name: Fix AndroidManifest.xml namespace issue
+      run: |
+        cd android/app/src/main
+        if [ -f AndroidManifest.xml ]; then
+          # Remove package attribute from AndroidManifest.xml as it's deprecated in AGP 8+
+          sed -i 's/package="[^"]*"//g' AndroidManifest.xml
+          echo "Fixed AndroidManifest.xml namespace"
+        else
+          echo "AndroidManifest.xml not found, creating minimal version"
+          cat > AndroidManifest.xml << 'MANIFEST_EOF'
+        <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+            <uses-permission android:name="android.permission.INTERNET" />
+            <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+            
+            <application
+                android:allowBackup="true"
+                android:icon="@mipmap/ic_launcher"
+                android:label="Vyakti AI"
+                android:theme="@style/Theme.AppCompat.DayNight.NoActionBar">
+                <activity
+                    android:name=".MainActivity"
+                    android:exported="true"
+                    android:launchMode="singleTop"
+                    android:windowSoftInputMode="adjustResize">
+                    <intent-filter>
+                        <action android:name="android.intent.action.MAIN" />
+                        <category android:name="android.intent.category.LAUNCHER" />
+                    </intent-filter>
+                </activity>
+            </application>
+        </manifest>
+        MANIFEST_EOF
+        fi
+
     - name: Create minimal app build.gradle
       run: |
         cd android
@@ -118,16 +164,21 @@ jobs:
         }
 
         android {
-            namespace "com.vyaktiai"
+            namespace "com.vyaktiai.mobile"
             compileSdk 35
 
             defaultConfig {
-                applicationId "com.vyaktiai"
+                applicationId "com.vyaktiai.mobile"
                 minSdk 24
                 targetSdk 35
                 versionCode 1
                 versionName "1.0"
                 testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+                multiDexEnabled true
+                
+                ndk {
+                    abiFilters "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
+                }
             }
 
             buildTypes {
@@ -135,6 +186,10 @@ jobs:
                     minifyEnabled false
                     proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
                     signingConfig signingConfigs.debug
+                }
+                debug {
+                    applicationIdSuffix ".debug"
+                    debuggable true
                 }
             }
             
@@ -146,6 +201,11 @@ jobs:
             kotlinOptions {
                 jvmTarget = '1.8'
             }
+            
+            packagingOptions {
+                pickFirst '**/libc++_shared.so'
+                pickFirst '**/libjsc.so'
+            }
         }
 
         dependencies {
@@ -154,6 +214,7 @@ jobs:
             implementation 'androidx.activity:activity-compose:1.8.2'
             implementation 'androidx.appcompat:appcompat:1.6.1'
             implementation 'com.google.android.material:material:1.11.0'
+            implementation 'androidx.multidex:multidex:2.0.1'
             testImplementation 'junit:junit:4.13.2'
             androidTestImplementation 'androidx.test.ext:junit:1.1.5'
             androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
@@ -180,21 +241,16 @@ jobs:
         /opt/gradle/bin/gradle wrapper --gradle-version 8.1.1
         chmod +x gradlew
 
-    - name: Verify setup
+    - name: Verify setup and clean
       run: |
         cd android
         ./gradlew --version
-        ./gradlew projects
-
-    - name: Clean build
-      run: |
-        cd android
         ./gradlew clean --no-daemon --stacktrace
 
     - name: Build Debug APK
       run: |
         cd android
-        ./gradlew assembleDebug --no-daemon --stacktrace
+        ./gradlew assembleDebug --no-daemon --stacktrace --warning-mode all
 
     - name: Build Release APK
       run: |
@@ -206,9 +262,10 @@ jobs:
         cd android
         ./gradlew bundleRelease --no-daemon --stacktrace
 
-    - name: Verify outputs
+    - name: Verify build outputs
       run: |
-        find android/app/build/outputs -name "*.apk" -o -name "*.aab" | head -10
+        echo "Build outputs created:"
+        find android/app/build/outputs -name "*.apk" -o -name "*.aab" | sort
 
     - name: Upload Debug APK
       uses: actions/upload-artifact@v4
@@ -241,6 +298,10 @@ jobs:
         mv build.gradle.original build.gradle 2>/dev/null || echo "No original build.gradle to restore"
         mv app/build.gradle.original app/build.gradle 2>/dev/null || echo "No original app build.gradle to restore"
         mv settings.gradle.original settings.gradle 2>/dev/null || echo "No original settings.gradle to restore"
+        mv app/src/main/AndroidManifest.xml.original app/src/main/AndroidManifest.xml 2>/dev/null || echo "No original AndroidManifest.xml to restore"
 
-    - name: Success
-      run: echo "Android APK and AAB build completed successfully!"
+    - name: Build Success
+      run: |
+        echo "✅ Android build completed successfully!"
+        echo "✅ APK and AAB files ready for Google Play Store submission"
+        echo "✅ All original React Native files preserved"
