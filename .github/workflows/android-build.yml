@@ -52,6 +52,9 @@ jobs:
         # Fix gradle.properties JVM options for Java 17 compatibility
         sed -i 's/-XX:MaxMetaspaceSize=512m/-XX:+UseG1GC/' android/gradle.properties
         sed -i 's/-Xmx2048m/-Xmx4096m/' android/gradle.properties
+        
+        # Make gradlew executable (fixes permission denied error)
+        chmod +x android/gradlew
 
     - name: Create Debug Keystore
       working-directory: android/app
