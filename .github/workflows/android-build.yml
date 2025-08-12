@@ -40,25 +40,26 @@ jobs:
     - name: Create local.properties
       run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
 
-    - name: Fix Gradle Wrapper
+    - name: Setup Gradle Wrapper
       run: |
         cd android
-        # Convert line endings and set permissions
-        dos2unix gradlew 2>/dev/null || true
+        # Install Gradle first
+        wget https://services.gradle.org/distributions/gradle-8.0-bin.zip
+        unzip -q gradle-8.0-bin.zip
+        export PATH=$PWD/gradle-8.0/bin:$PATH
+        # Generate wrapper
+        gradle wrapper --gradle-version=8.0
         chmod +x gradlew
-        # Verify the file
-        file gradlew
-        head -1 gradlew
 
     - name: Build APK
       run: |
         cd android
-        bash gradlew clean assembleRelease --stacktrace
+        ./gradlew clean assembleRelease --stacktrace
 
     - name: Build AAB
       run: |
         cd android
-        bash gradlew bundleRelease --stacktrace
+        ./gradlew bundleRelease --stacktrace
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
