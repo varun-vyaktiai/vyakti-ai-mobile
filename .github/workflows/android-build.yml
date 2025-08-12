@@ -78,7 +78,7 @@ jobs:
         }
         EOF
         
-        # Fix settings.gradle to include React Native plugin
+        # Fix settings.gradle for React Native 0.73
         cat > android/settings.gradle << 'EOF'
         pluginManagement {
             repositories {
@@ -98,7 +98,7 @@ jobs:
         }
 
         include ':app'
-        includeBuild('../node_modules/react-native-gradle-plugin')
+        includeBuild('../node_modules/@react-native/gradle-plugin')
 
         if (settings.hasProperty("newArchEnabled") && settings.newArchEnabled == "true") {
             include(":ReactAndroid")
