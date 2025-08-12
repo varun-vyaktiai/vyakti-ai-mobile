@@ -98,6 +98,11 @@ jobs:
         FLIPPER_VERSION=0.182.0
         EOF
 
+    - name: Fix Gradle Wrapper Permissions
+      run: |
+        chmod +x android/gradlew
+        ls -la android/gradlew
+
     - name: Create Debug Keystore
       working-directory: android/app
       run: |
@@ -164,11 +169,12 @@ jobs:
     - name: Build Success
       run: |
         echo "✅ Vyakti AI React Native 0.73.6 app built successfully!"
+        echo "✅ Fixed gradlew permissions and gradle configuration"
         echo "✅ Removed problematic react-native-gradle-plugin classpath"
-        echo "✅ Used built-in React Native gradle plugin (no external dependency)"
+        echo "✅ Used built-in React Native gradle plugin"
         echo "✅ Generated production-ready APK and AAB files"
         echo ""
         echo "📱 Your complete mobile app is ready:"
         echo "• vyakti-ai-debug-fixed (for testing)"
-        echo "• vyakti-ai-release-fixed (for distribution)"
+        echo "• vyakti-ai-release-fixed (for distribution)"  
         echo "• vyakti-ai-playstore-fixed (for Google Play Store)"
