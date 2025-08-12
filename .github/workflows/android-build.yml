@@ -1,4 +1,4 @@
-  name: Build Vyakti AI Android APK
+ name: Build Vyakti AI Android APK
 
 on:
   push:
@@ -27,7 +27,6 @@ jobs:
       with:
         node-version: '18'
 
-    # FIX ISSUE #1: Lock file absence - Create package-lock.json if missing
     - name: Generate package-lock.json if missing
       run: |
         if [ ! -f package-lock.json ]; then
@@ -35,7 +34,6 @@ jobs:
           npm install --package-lock-only --legacy-peer-deps
         fi
 
-    # Install React Native dependencies with legacy peer deps to handle conflicts
     - name: Install npm dependencies
       run: npm ci --legacy-peer-deps
 
@@ -48,26 +46,21 @@ jobs:
     - name: Create Android local.properties
       run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
 
-    # FIX ISSUE #2: gradlew syntax error - Recreate gradlew wrapper completely
     - name: Fix gradlew wrapper corruption
       run: |
         cd android
-        # Remove potentially corrupted wrapper files
         rm -f gradlew gradlew.bat
         rm -rf gradle/wrapper/gradle-wrapper.jar
         
-        # Download and install Gradle 8.1.1 directly
         curl -L -o gradle.zip https://services.gradle.org/distributions/gradle-8.1.1-bin.zip
         unzip -q gradle.zip
         sudo rm -rf /opt/gradle 2>/dev/null || true
         sudo mv gradle-8.1.1 /opt/gradle
         sudo chmod +x /opt/gradle/bin/gradle
         
-        # Generate fresh wrapper using installed Gradle
         /opt/gradle/bin/gradle wrapper --gradle-version 8.1.1
         chmod +x gradlew
 
-    # FIX ISSUE #3: Repository files missing - Create settings.gradle first, then build.gradle
     - name: Create settings.gradle with repository management
       run: |
         cd android
@@ -103,8 +96,6 @@ jobs:
       run: |
         cd android
         cat > build.gradle << 'EOF'
-        // Top-level build file where you can add configuration options common to all sub-projects/modules.
-
         buildscript {
             ext {
                 buildToolsVersion = "35.0.0"
@@ -131,7 +122,6 @@ jobs:
         apply plugin: "com.facebook.react.rootproject"
         EOF
 
-    # FIX ISSUE #4: SDK compilation error - Pre-validate all dependencies
     - name: Validate Gradle configuration and clear cache
       run: |
         cd android
@@ -147,7 +137,6 @@ jobs:
         cd android
         ./gradlew clean --no-daemon --stacktrace
 
-    # Build with detailed logging for debugging
     - name: Build Release APK with detailed logging
       run: |
         cd android
@@ -158,7 +147,6 @@ jobs:
         cd android
         ./gradlew bundleRelease --no-daemon --stacktrace
 
-    # Verify build outputs exist before upload
     - name: Verify build outputs
       run: |
         ls -la android/app/build/outputs/apk/release/
@@ -190,12 +178,12 @@ jobs:
 
     - name: Build Success Summary
       run: |
-        echo "✅ Build completed successfully!"
-        echo "📱 APK: android/app/build/outputs/apk/release/app-release.apk"
-        echo "📦 AAB: android/app/build/outputs/bundle/release/app-release.aab"
-        echo "🚀 Ready for Google Play Store submission"
+        echo "Build completed successfully!"
+        echo "APK: android/app/build/outputs/apk/release/app-release.apk"
+        echo "AAB: android/app/build/outputs/bundle/release/app-release.aab"
+        echo "Ready for Google Play Store submission"
         
         APK_SIZE=$(du -h android/app/build/outputs/apk/release/app-release.apk | cut -f1)
         AAB_SIZE=$(du -h android/app/build/outputs/bundle/release/app-release.aab | cut -f1)
-        echo "📊 APK Size: $APK_SIZE"
-        echo "📊 AAB Size: $AAB_SIZE"
+        echo "APK Size: $APK_SIZE"
+        echo "AAB Size: $AAB_SIZE"
