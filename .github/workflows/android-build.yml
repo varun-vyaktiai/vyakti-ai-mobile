@@ -36,47 +36,79 @@ jobs:
     - name: Install React Native Dependencies
       run: npm install --legacy-peer-deps
 
-    - name: Create Android Configuration Files
+    - name: Regenerate Complete Android Build Configuration
       run: |
         # Create local.properties
         echo "sdk.dir=$ANDROID_HOME" > android/local.properties
         
-        # Create/update gradle.properties with all required properties
+        # Completely replace build.gradle with fresh repository configuration
+        cat > android/build.gradle << 'EOF'
+        // Top-level build file where you can add configuration options common to all sub-projects/modules.
+
+        buildscript {
+            ext {
+                buildToolsVersion = "35.0.0"
+                minSdkVersion = 24
+                compileSdkVersion = 35
+                targetSdkVersion = 35
+                ndkVersion = "25.1.8937393"
+                kotlinVersion = "1.8.10"
+            }
+            repositories {
+                google()
+                mavenCentral()
+                maven { url "https://www.jitpack.io" }
+                maven { url "https://repo1.maven.org/maven2/" }
+                gradlePluginPortal()
+            }
+            dependencies {
+                classpath("com.android.tools.build:gradle:8.1.1")
+                classpath("com.facebook.react:react-native-gradle-plugin")
+                classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
+            }
+        }
+
+        apply plugin: "com.facebook.react.rootproject"
+
+        allprojects {
+            repositories {
+                google()
+                mavenCentral()
+                maven { url "https://www.jitpack.io" }
+                maven { url "https://repo1.maven.org/maven2/" }
+                gradlePluginPortal()
+            }
+        }
+        EOF
+        
+        # Create clean gradle.properties
         cat > android/gradle.properties << 'EOF'
         # Project-wide Gradle settings
-        org.gradle.jvmargs=-Xmx4096M -XX:MaxMetaspaceSize=512m -XX:+HeapDumpOnOutOfMemoryError
+        org.gradle.jvmargs=-Xmx4096M -XX:MaxMetaspaceSize=512m
         org.gradle.daemon=false
-        org.gradle.configureondemand=true
         org.gradle.parallel=false
         
-        # Android X
+        # Android settings
         android.useAndroidX=true
         android.enableJetifier=true
+        android.enableR8.fullMode=true
         
-        # React Native
+        # React Native settings
         hermesEnabled=true
         newArchEnabled=false
         
-        # Flipper (required for debug builds)
+        # Flipper version for debug builds
         FLIPPER_VERSION=0.182.0
-        
-        # Enable R8 full mode
-        android.enableR8.fullMode=true
-        
-        # Signing (for release builds)
-        VYAKTIAI_UPLOAD_STORE_FILE=vyakti-ai-release-key.keystore
-        VYAKTIAI_UPLOAD_KEY_ALIAS=vyakti-ai-key-alias  
-        VYAKTIAI_UPLOAD_STORE_PASSWORD=vyakti123
-        VYAKTIAI_UPLOAD_KEY_PASSWORD=vyakti123
         EOF
 
-    - name: Install Direct Gradle (Bypass Wrapper)
+    - name: Install Gradle 8.1.1 Directly
       run: |
         cd /opt
         sudo wget -q https://services.gradle.org/distributions/gradle-8.1.1-bin.zip
         sudo unzip -q gradle-8.1.1-bin.zip
         sudo rm gradle-8.1.1-bin.zip
         sudo ln -sf /opt/gradle-8.1.1/bin/gradle /usr/local/bin/gradle
+        echo "Gradle version:"
         gradle --version
 
     - name: Create Debug Keystore
@@ -89,27 +121,34 @@ jobs:
             -dname "CN=Android Debug,O=Android,C=US"
         fi
 
+    - name: Verify Gradle Configuration
+      working-directory: android
+      run: |
+        echo "Testing Gradle configuration..."
+        gradle tasks --no-daemon --stacktrace
+
     - name: Clean Build
       working-directory: android
       run: gradle clean --no-daemon --stacktrace
 
     - name: Build Debug APK
       working-directory: android
-      run: gradle assembleDebug --no-daemon --stacktrace --info
+      run: gradle assembleDebug --no-daemon --stacktrace
 
-    - name: Build Release APK  
+    - name: Build Release APK
       working-directory: android
-      run: gradle assembleRelease --no-daemon --stacktrace --info
+      run: gradle assembleRelease --no-daemon --stacktrace
 
     - name: Build Release AAB
       working-directory: android
-      run: gradle bundleRelease --no-daemon --stacktrace --info
+      run: gradle bundleRelease --no-daemon --stacktrace
 
-    - name: Verify Build Results
+    - name: Verify Build Outputs
       run: |
-        echo "=== Vyakti AI Build Outputs ==="
+        echo "=== Vyakti AI Build Results ==="
         find android/app/build/outputs -name "*.apk" -o -name "*.aab" | sort
         echo ""
+        echo "=== File Sizes ==="
         for file in $(find android/app/build/outputs -name "*.apk" -o -name "*.aab"); do
           echo "$(basename $file): $(du -h "$file" | cut -f1)"
         done
@@ -117,28 +156,32 @@ jobs:
     - name: Upload Debug APK
       uses: actions/upload-artifact@v4
       with:
-        name: vyakti-ai-debug-complete
+        name: vyakti-ai-debug-final
         path: android/app/build/outputs/apk/debug/*.apk
         retention-days: 7
 
     - name: Upload Release APK
       uses: actions/upload-artifact@v4
       with:
-        name: vyakti-ai-release-complete
+        name: vyakti-ai-release-final
         path: android/app/build/outputs/apk/release/*.apk
         retention-days: 14
 
     - name: Upload Play Store AAB
       uses: actions/upload-artifact@v4
       with:
-        name: vyakti-ai-playstore-complete
+        name: vyakti-ai-playstore-final
         path: android/app/build/outputs/bundle/release/*.aab
         retention-days: 30
 
-    - name: Build Success
+    - name: Success Summary
       run: |
         echo "✅ Vyakti AI React Native app built successfully!"
-        echo "✅ Fixed Gradle repository and dependency issues"
-        echo "✅ Created proper debug keystore"
-        echo "✅ Generated APK and AAB files"
-        echo "✅ Your complete mobile app is ready for testing and Play Store submission"
+        echo "✅ Regenerated all Gradle configuration files"
+        echo "✅ Fixed repository resolution issues"
+        echo "✅ Your complete mobile app with all features is ready"
+        echo ""
+        echo "📱 Next Steps:"
+        echo "1. Download vyakti-ai-debug-final from GitHub Actions artifacts"
+        echo "2. Install on Android phone to test your complete Vyakti AI app"
+        echo "3. Use vyakti-ai-playstore-final (AAB) for Play Store submission"
