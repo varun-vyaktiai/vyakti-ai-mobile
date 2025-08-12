@@ -1,4 +1,4 @@
-name: Build Vyakti AI Android APK
+  name: Build Vyakti AI Android APK
 
 on:
   push:
@@ -67,8 +67,39 @@ jobs:
         /opt/gradle/bin/gradle wrapper --gradle-version 8.1.1
         chmod +x gradlew
 
-    # FIX ISSUE #3: Repository files missing - Rebuild build.gradle with complete repositories
-    - name: Fix missing repositories in build.gradle
+    # FIX ISSUE #3: Repository files missing - Create settings.gradle first, then build.gradle
+    - name: Create settings.gradle with repository management
+      run: |
+        cd android
+        cat > settings.gradle << 'EOF'
+        pluginManagement {
+            repositories {
+                google()
+                mavenCentral()
+                gradlePluginPortal()
+                maven { url "https://plugins.gradle.org/m2/" }
+            }
+        }
+        dependencyResolutionManagement {
+            repositoriesMode.set(RepositoriesMode.PREFER_PROJECT)
+            repositories {
+                google()
+                mavenCentral()
+                maven { url "https://www.jitpack.io" }
+                maven { url "https://repo1.maven.org/maven2/" }
+                jcenter() {
+                    content {
+                        includeModule("com.yqritc", "Android-ScalableVideoView")
+                    }
+                }
+            }
+        }
+
+        rootProject.name = 'VyaktiAI'
+        include ':app'
+        EOF
+
+    - name: Fix build.gradle with proper repository configuration
       run: |
         cd android
         cat > build.gradle << 'EOF'
@@ -86,17 +117,9 @@ jobs:
             repositories {
                 google()
                 mavenCentral()
-                maven { url "https://www.jitpack.io" }
-                maven { url "https://repo1.maven.org/maven2/" }
-                maven { url "https://plugins.gradle.org/m2/" }
-                maven { url "https://maven.google.com" }
                 gradlePluginPortal()
-                jcenter() {
-                    content {
-                        includeModule("com.yqritc", "Android-ScalableVideoView")
-                        includeModule("com.facebook.react", "react-native")
-                    }
-                }
+                maven { url "https://plugins.gradle.org/m2/" }
+                maven { url "https://repo1.maven.org/maven2/" }
             }
             dependencies {
                 classpath("com.android.tools.build:gradle:8.1.1")
@@ -106,42 +129,18 @@ jobs:
         }
 
         apply plugin: "com.facebook.react.rootproject"
-
-        allprojects {
-            repositories {
-                google()
-                mavenCentral()
-                maven { url "https://www.jitpack.io" }
-                maven { url "https://repo1.maven.org/maven2/" }
-                maven { url "https://plugins.gradle.org/m2/" }
-                maven { url "https://maven.google.com" }
-                gradlePluginPortal()
-                jcenter() {
-                    content {
-                        includeModule("com.yqritc", "Android-ScalableVideoView")
-                        includeModule("com.facebook.react", "react-native")
-                    }
-                }
-                // Additional React Native specific repositories
-                maven { url "https://oss.sonatype.org/content/repositories/snapshots/" }
-                flatDir {
-                    dirs 'libs'
-                }
-            }
-        }
         EOF
 
     # FIX ISSUE #4: SDK compilation error - Pre-validate all dependencies
-    - name: Validate Gradle configuration
+    - name: Validate Gradle configuration and clear cache
       run: |
         cd android
+        echo "Clearing Gradle cache..."
+        rm -rf ~/.gradle/caches/
+        rm -rf .gradle/
+        
         echo "Testing Gradle dependency resolution..."
-        ./gradlew dependencies --configuration classpath || {
-            echo "Dependency resolution failed, attempting fix..."
-            # Clear Gradle cache
-            rm -rf ~/.gradle/caches/
-            ./gradlew --refresh-dependencies dependencies --configuration classpath
-        }
+        ./gradlew dependencies --configuration classpath --refresh-dependencies
 
     - name: Clean project before build
       run: |
