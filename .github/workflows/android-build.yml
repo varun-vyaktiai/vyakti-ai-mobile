@@ -40,8 +40,13 @@ jobs:
     - name: Create Android local.properties
       run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
 
-    - name: Make gradlew executable
-      run: chmod +x android/gradlew
+    - name: Fix gradlew shell compatibility and make executable
+      run: |
+        # Fix the HERE-doc syntax issue in gradlew line 210
+        sed -i 's/ARGS=$( xargs -n1 <<<"$\*" | shuf | xargs )/ARGS=$( printf "%s\\n" "$@" | shuf | xargs )/' android/gradlew
+        sed -i 's/ARGS=$( xargs -n1 <<<"$\*" | sort -u | xargs )/ARGS=$( printf "%s\\n" "$@" | sort -u | xargs )/' android/gradlew
+        chmod +x android/gradlew
+        echo "Fixed gradlew syntax and made executable"
 
     - name: Fix React Native 0.73.6 entryFile property
       run: |
@@ -53,11 +58,20 @@ jobs:
         echo "After fix:"
         head -15 android/app/build.gradle
 
+    - name: Create gradle wrapper if missing
+      run: |
+        cd android
+        if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
+          echo "Creating gradle wrapper..."
+          # Use gradle directly to create wrapper
+          gradle wrapper --gradle-version=8.0 --distribution-type=bin
+        fi
+
     - name: Clean and build APK
       run: |
         cd android
-        ./gradlew clean
-        ./gradlew assembleRelease
+        ./gradlew clean --stacktrace
+        ./gradlew assembleRelease --stacktrace
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
