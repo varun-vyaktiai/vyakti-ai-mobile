@@ -40,8 +40,9 @@ jobs:
     - name: Create local.properties
       run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
 
-    - name: Fix Android build.gradle repositories
+    - name: Fix Android build.gradle and settings.gradle
       run: |
+        # Fix build.gradle
         cat > android/build.gradle << 'EOF'
         buildscript {
             ext {
@@ -63,8 +64,6 @@ jobs:
             }
         }
 
-        apply plugin: "com.facebook.react.rootproject"
-
         allprojects {
             repositories {
                 google()
@@ -76,6 +75,36 @@ jobs:
                     url("$rootDir/../node_modules/react-native/android")
                 }
             }
+        }
+        EOF
+        
+        # Fix settings.gradle to include React Native plugin
+        cat > android/settings.gradle << 'EOF'
+        pluginManagement {
+            repositories {
+                google()
+                mavenCentral()
+                gradlePluginPortal()
+            }
+        }
+
+        dependencyResolutionManagement {
+            repositoriesMode.set(RepositoriesMode.PREFER_PROJECT)
+            repositories {
+                google()
+                mavenCentral()
+                maven { url "https://www.jitpack.io" }
+            }
+        }
+
+        include ':app'
+        includeBuild('../node_modules/react-native-gradle-plugin')
+
+        if (settings.hasProperty("newArchEnabled") && settings.newArchEnabled == "true") {
+            include(":ReactAndroid")
+            project(":ReactAndroid").projectDir = file("../node_modules/react-native/ReactAndroid")
+            include(":ReactAndroid:hermes-engine")
+            project(":ReactAndroid:hermes-engine").projectDir = file("../node_modules/react-native/ReactAndroid/hermes-engine")
         }
         EOF
 
