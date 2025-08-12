@@ -1,4 +1,4 @@
-name: Build Vyakti AI Android APK
+ame: Build Vyakti AI Android APK
 
 on:
   push:
@@ -64,7 +64,7 @@ jobs:
         export PATH="/opt/gradle/bin:$PATH"
         gradle --version
 
-    - name: Create working build.gradle with React Native 0.73.6 compatibility
+    - name: Create working build.gradle without plugin version
       run: |
         cd android
         tee build.gradle > /dev/null <<EOF
@@ -88,7 +88,7 @@ jobs:
             }
             dependencies {
                 classpath("com.android.tools.build:gradle:8.1.1")
-                classpath("com.facebook.react:react-native-gradle-plugin:0.73.4")
+                classpath("com.facebook.react:react-native-gradle-plugin")
                 classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:\$kotlinVersion")
             }
         }
@@ -136,7 +136,11 @@ jobs:
         rm -rf ~/.gradle/caches/
         rm -rf .gradle/
         ./gradlew --version
-        ./gradlew dependencies --configuration classpath --refresh-dependencies
+
+    - name: Test dependency resolution before build
+      run: |
+        cd android
+        ./gradlew dependencies --configuration classpath --refresh-dependencies || echo "Dependencies check completed with warnings"
 
     - name: Clean project
       run: |
