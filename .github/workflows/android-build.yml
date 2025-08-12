@@ -35,13 +35,10 @@ jobs:
         $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
     - name: Install Node dependencies
-      run: |
-        cd mobile-app
-        npm install --legacy-peer-deps
+      run: npm install --legacy-peer-deps
 
     - name: Create missing Android configuration files
       run: |
-        cd mobile-app
         echo "sdk.dir=$ANDROID_HOME" > android/local.properties
         
         cat > android/settings.gradle << 'EOF'
@@ -77,7 +74,6 @@ jobs:
 
     - name: Fix Android root build.gradle for React Native 0.73.6
       run: |
-        cd mobile-app
         cat > android/build.gradle << 'EOF'
         buildscript {
             ext {
@@ -117,14 +113,13 @@ jobs:
 
     - name: Create missing Android keystore
       run: |
-        cd mobile-app/android/app
+        cd android/app
         if [ ! -f debug.keystore ]; then
             keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "C=US, O=Android, CN=Android Debug"
         fi
 
     - name: Create gradle.properties for React Native 0.73.6
       run: |
-        cd mobile-app
         cat > android/gradle.properties << 'EOF'
         org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m
         android.useAndroidX=true
@@ -143,7 +138,7 @@ jobs:
 
     - name: Setup Gradle Wrapper
       run: |
-        cd mobile-app/android
+        cd android
         wget https://services.gradle.org/distributions/gradle-8.0-bin.zip
         unzip -q gradle-8.0-bin.zip
         export PATH=$PWD/gradle-8.0/bin:$PATH
@@ -154,13 +149,13 @@ jobs:
 
     - name: Clean and Build APK
       run: |
-        cd mobile-app/android
+        cd android
         ./gradlew clean
         ./gradlew assembleRelease --stacktrace --info
 
     - name: Build AAB
       run: |
-        cd mobile-app/android
+        cd android
         ./gradlew bundleRelease --stacktrace
 
     - name: Upload APK Artifacts
@@ -168,17 +163,17 @@ jobs:
       with:
         name: android-apk-artifacts
         path: |
-          mobile-app/android/app/build/outputs/apk/release/*.apk
+          android/app/build/outputs/apk/release/*.apk
 
     - name: Upload AAB Artifact
       uses: actions/upload-artifact@v4
       with:
         name: android-aab-artifact
-        path: mobile-app/android/app/build/outputs/bundle/release/app-release.aab
+        path: android/app/build/outputs/bundle/release/app-release.aab
 
     - name: List build outputs
       run: |
         echo "=== APK Files ==="
-        find mobile-app/android/app/build/outputs/apk/release -name "*.apk" -exec ls -la {} \;
+        find android/app/build/outputs/apk/release -name "*.apk" -exec ls -la {} \;
         echo "=== AAB Files ==="
-        find mobile-app/android/app/build/outputs/bundle/release -name "*.aab" -exec ls -la {} \;
+        find android/app/build/outputs/bundle/release -name "*.aab" -exec ls -la {} \;
