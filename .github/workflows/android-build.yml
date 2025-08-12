@@ -1,4 +1,4 @@
-ame: Build Vyakti AI Android APK
+name: Build Vyakti AI Android APK
 
 on:
   push:
@@ -34,7 +34,7 @@ jobs:
           npm install --package-lock-only --legacy-peer-deps
         fi
 
-    - name: Install npm dependencies  
+    - name: Install npm dependencies
       run: npm ci --legacy-peer-deps
 
     - name: Setup Android SDK
@@ -46,28 +46,24 @@ jobs:
     - name: Create Android local.properties
       run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
 
-    - name: Remove conflicting Gradle files
+    - name: Clean existing Gradle files
       run: |
         cd android
-        rm -f settings.gradle
-        rm -f gradlew gradlew.bat
-        rm -rf gradle/
-        rm -rf .gradle/
+        rm -f settings.gradle gradlew gradlew.bat
+        rm -rf gradle/ .gradle/
 
-    - name: Install Gradle 8.1.1 directly
+    - name: Install Gradle 8.1.1
       run: |
         curl -L -o gradle.zip https://services.gradle.org/distributions/gradle-8.1.1-bin.zip
         unzip -q gradle.zip
         sudo rm -rf /opt/gradle 2>/dev/null || true
         sudo mv gradle-8.1.1 /opt/gradle
         sudo chmod +x /opt/gradle/bin/gradle
-        export PATH="/opt/gradle/bin:$PATH"
-        gradle --version
 
-    - name: Create working build.gradle without plugin version
+    - name: Create build.gradle
       run: |
         cd android
-        tee build.gradle > /dev/null <<EOF
+        cat > build.gradle << 'GRADLE_END'
         buildscript {
             ext {
                 buildToolsVersion = "35.0.0"
@@ -89,7 +85,7 @@ jobs:
             dependencies {
                 classpath("com.android.tools.build:gradle:8.1.1")
                 classpath("com.facebook.react:react-native-gradle-plugin")
-                classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:\$kotlinVersion")
+                classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
             }
         }
 
@@ -109,74 +105,64 @@ jobs:
                     }
                 }
                 maven { url "https://oss.sonatype.org/content/repositories/snapshots/" }
-                flatDir {
-                    dirs 'libs'
-                }
+                flatDir { dirs 'libs' }
             }
         }
 
         apply plugin: "com.facebook.react.rootproject"
-        EOF
+        GRADLE_END
 
-    - name: Create simple settings.gradle
+    - name: Create settings.gradle
       run: |
         cd android
         echo "rootProject.name = 'VyaktiAI'" > settings.gradle
         echo "include ':app'" >> settings.gradle
 
-    - name: Generate fresh Gradle wrapper
+    - name: Generate Gradle wrapper
       run: |
         cd android
         /opt/gradle/bin/gradle wrapper --gradle-version 8.1.1
         chmod +x gradlew
 
-    - name: Clear all caches and validate
+    - name: Clear caches
       run: |
         cd android
-        rm -rf ~/.gradle/caches/
-        rm -rf .gradle/
+        rm -rf ~/.gradle/caches/ .gradle/
         ./gradlew --version
 
-    - name: Test dependency resolution before build
+    - name: Test dependencies
       run: |
         cd android
-        ./gradlew dependencies --configuration classpath --refresh-dependencies || echo "Dependencies check completed with warnings"
+        ./gradlew dependencies --configuration classpath --refresh-dependencies
 
-    - name: Clean project
+    - name: Clean build
       run: |
         cd android
         ./gradlew clean --no-daemon --stacktrace
 
-    - name: Build Release APK
+    - name: Build APK
       run: |
         cd android
-        ./gradlew assembleRelease --no-daemon --stacktrace --warning-mode all
+        ./gradlew assembleRelease --no-daemon --stacktrace
 
-    - name: Build Release AAB
+    - name: Build AAB
       run: |
         cd android
         ./gradlew bundleRelease --no-daemon --stacktrace
 
-    - name: Verify outputs exist
-      run: |
-        ls -la android/app/build/outputs/apk/release/
-        ls -la android/app/build/outputs/bundle/release/
-
-    - name: Upload Release APK
+    - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: vyakti-ai-release-apk
         path: android/app/build/outputs/apk/release/app-release.apk
         retention-days: 7
 
-    - name: Upload Release AAB
+    - name: Upload AAB
       uses: actions/upload-artifact@v4
       with:
         name: vyakti-ai-release-aab
         path: android/app/build/outputs/bundle/release/app-release.aab
         retention-days: 7
 
-    - name: Build Success Summary
-      run: |
-        echo "Build completed successfully!"
-        echo "APK and AAB ready for Google Play Store submission"
+    - name: Success
+      run: echo "Android build completed successfully"
