@@ -37,6 +37,13 @@ jobs:
     - name: Install npm dependencies
       run: npm ci --legacy-peer-deps
 
+    - name: Verify React Native installation
+      run: |
+        ls -la node_modules/react-native/
+        ls -la node_modules/@react-native/
+        echo "React Native version:"
+        node -e "console.log(require('./package.json').dependencies['react-native'])"
+
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
       with:
@@ -60,10 +67,10 @@ jobs:
         sudo mv gradle-8.1.1 /opt/gradle
         sudo chmod +x /opt/gradle/bin/gradle
 
-    - name: Create build.gradle
+    - name: Create build.gradle for React Native 0.73.6
       run: |
         cd android
-        cat > build.gradle << 'GRADLE_END'
+        cat > build.gradle << 'GRADLE_EOF'
         buildscript {
             ext {
                 buildToolsVersion = "35.0.0"
@@ -84,7 +91,6 @@ jobs:
             }
             dependencies {
                 classpath("com.android.tools.build:gradle:8.1.1")
-                classpath("com.facebook.react:react-native-gradle-plugin")
                 classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
             }
         }
@@ -110,7 +116,7 @@ jobs:
         }
 
         apply plugin: "com.facebook.react.rootproject"
-        GRADLE_END
+        GRADLE_EOF
 
     - name: Create settings.gradle
       run: |
@@ -124,45 +130,52 @@ jobs:
         /opt/gradle/bin/gradle wrapper --gradle-version 8.1.1
         chmod +x gradlew
 
-    - name: Clear caches
+    - name: Clear caches and test setup
       run: |
         cd android
         rm -rf ~/.gradle/caches/ .gradle/
         ./gradlew --version
+        echo "Testing basic Gradle functionality..."
+        ./gradlew tasks --all | grep -i "build" || echo "Gradle tasks listed"
 
-    - name: Test dependencies
-      run: |
-        cd android
-        ./gradlew dependencies --configuration classpath --refresh-dependencies
-
-    - name: Clean build
+    - name: Clean build directory
       run: |
         cd android
         ./gradlew clean --no-daemon --stacktrace
 
-    - name: Build APK
+    - name: Build Release APK
       run: |
         cd android
-        ./gradlew assembleRelease --no-daemon --stacktrace
+        ./gradlew assembleRelease --no-daemon --stacktrace --warning-mode all
 
-    - name: Build AAB
+    - name: Build Release AAB
       run: |
         cd android
         ./gradlew bundleRelease --no-daemon --stacktrace
 
+    - name: Verify build outputs
+      run: |
+        find android/app/build/outputs -name "*.apk" -o -name "*.aab" | head -10
+        ls -la android/app/build/outputs/apk/release/ || echo "APK directory check"
+        ls -la android/app/build/outputs/bundle/release/ || echo "AAB directory check"
+
     - name: Upload APK
       uses: actions/upload-artifact@v4
+      if: success()
       with:
         name: vyakti-ai-release-apk
-        path: android/app/build/outputs/apk/release/app-release.apk
+        path: android/app/build/outputs/apk/release/*.apk
         retention-days: 7
 
     - name: Upload AAB
       uses: actions/upload-artifact@v4
+      if: success()
       with:
         name: vyakti-ai-release-aab
-        path: android/app/build/outputs/bundle/release/app-release.aab
+        path: android/app/build/outputs/bundle/release/*.aab
         retention-days: 7
 
-    - name: Success
-      run: echo "Android build completed successfully"
+    - name: Success Summary
+      run: |
+        echo "Android build completed successfully!"
+        echo "Files ready for Google Play Store submission"
