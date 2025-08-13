@@ -549,28 +549,24 @@ jobs:
         echo "Installing missing React Native gesture handler..."
         npm install react-native-gesture-handler@2.14.0
         
-        # Fix React Native 0.73.6 auto-linking and local dependencies
-        echo "Configuring React Native 0.73.6 auto-linking..."
+        # Fix React Native 0.73.6 by creating local React Native artifacts
+        echo "Creating local React Native artifacts for 0.73.6..."
         
-        # Use auto-linking instead of manual Maven resolution
-        # Add apply plugin: "com.facebook.react.settings" to settings.gradle if missing
-        if ! grep -q "com.facebook.react.settings" android/settings.gradle; then
-          echo "apply plugin: 'com.facebook.react.settings'" >> android/settings.gradle
+        # Create local react-native jar from node_modules
+        mkdir -p android/libs
+        
+        # Copy React Native artifacts from node_modules to local libs
+        if [ -d "node_modules/react-native/android" ]; then
+          echo "Copying React Native artifacts to local libs..."
+          find node_modules/react-native/android -name "*.aar" -exec cp {} android/libs/ \; 2>/dev/null || true
+          find node_modules/react-native/android -name "*.jar" -exec cp {} android/libs/ \; 2>/dev/null || true
         fi
         
-        # Ensure includeBuild is present in settings.gradle
-        if ! grep -q "includeBuild" android/settings.gradle; then
-          echo "includeBuild('../node_modules/@react-native/gradle-plugin')" >> android/settings.gradle
-        fi
-        
-        # Force React Native to use local installation in app/build.gradle
-        if [ -f "android/app/build.gradle" ]; then
-          echo "project.ext.react = [" >> android/app/build.gradle
-          echo "    enableHermes: true," >> android/app/build.gradle
-          echo "    root: '../../'," >> android/app/build.gradle
-          echo "    reactNativeDir: '../../node_modules/react-native'," >> android/app/build.gradle
-          echo "    cliPath: '../../node_modules/@react-native-community/cli/index.js'" >> android/app/build.gradle
-          echo "]" >> android/app/build.gradle
+        # Add flatDir repository to find local artifacts
+        if [ -f "android/build.gradle" ]; then
+          echo "repositories {" >> android/build.gradle
+          echo "    flatDir { dirs 'libs', '../libs', 'app/libs' }" >> android/build.gradle
+          echo "}" >> android/build.gradle
         fi
 
         # Configure native dependencies for Android
