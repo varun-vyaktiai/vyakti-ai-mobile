@@ -557,7 +557,7 @@ jobs:
         
         # Backup and recreate android/build.gradle with working configuration
         cp android/build.gradle android/build.gradle.backup
-        cat > android/build.gradle << 'EOF'
+        cat > android/build.gradle << EOF
 buildscript {
     ext {
         buildToolsVersion = "33.0.0"
@@ -585,7 +585,7 @@ EOF
         
         # 2. Fix app/build.gradle with proper React Native 0.73.6 configuration
         cp android/app/build.gradle android/app/build.gradle.backup
-        cat > android/app/build.gradle << 'EOF'
+        cat > android/app/build.gradle << EOF
 apply plugin: "com.android.application"
 apply plugin: "com.facebook.react"
 
@@ -640,7 +640,7 @@ EOF
         
         # 3. Fix settings.gradle for proper React Native 0.73.6 auto-linking
         cp android/settings.gradle android/settings.gradle.backup
-        cat > android/settings.gradle << 'EOF'
+        cat > android/settings.gradle << EOF
 rootProject.name = 'VyaktiAI'
 apply from: file("../node_modules/@react-native-community/cli-platform-android/native_modules.gradle"); applyNativeModulesSettingsGradle(settings)
 include ':app'
@@ -648,7 +648,7 @@ includeBuild('../node_modules/@react-native/gradle-plugin')
 EOF
         
         # 4. Create react-native.config.js for proper auto-linking
-        cat > react-native.config.js << 'EOF'
+        cat > react-native.config.js << EOF
 module.exports = {
   dependencies: {
     'react-native-vector-icons': {
