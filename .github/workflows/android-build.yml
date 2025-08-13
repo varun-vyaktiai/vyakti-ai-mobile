@@ -549,25 +549,119 @@ jobs:
         echo "Installing missing React Native gesture handler..."
         npm install react-native-gesture-handler@2.14.0
         
-        # Fix React Native 0.73.6 by creating local React Native artifacts
-        echo "Creating local React Native artifacts for 0.73.6..."
+        # COMPREHENSIVE FIX for React Native 0.73.6 build issues
+        echo "Applying comprehensive React Native 0.73.6 build fixes..."
         
-        # Create local react-native jar from node_modules
-        mkdir -p android/libs
+        # 1. Create fresh React Native template-compatible build.gradle files
+        echo "Creating React Native 0.73.6 compatible build configurations..."
         
-        # Copy React Native artifacts from node_modules to local libs
-        if [ -d "node_modules/react-native/android" ]; then
-          echo "Copying React Native artifacts to local libs..."
-          find node_modules/react-native/android -name "*.aar" -exec cp {} android/libs/ \; 2>/dev/null || true
-          find node_modules/react-native/android -name "*.jar" -exec cp {} android/libs/ \; 2>/dev/null || true
-        fi
+        # Backup and recreate android/build.gradle with working configuration
+        cp android/build.gradle android/build.gradle.backup
+        cat > android/build.gradle << 'EOF'
+buildscript {
+    ext {
+        buildToolsVersion = "33.0.0"
+        minSdkVersion = 21
+        compileSdkVersion = 33
+        targetSdkVersion = 33
+        ndkVersion = "23.1.7779620"
+    }
+    dependencies {
+        classpath("com.android.tools.build:gradle:8.1.1")
+        classpath("com.facebook.react:react-native-gradle-plugin")
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url 'https://www.jitpack.io' }
+        maven { url 'https://maven.google.com' }
+        flatDir { dirs '../node_modules/react-native/android' }
+    }
+}
+EOF
         
-        # Add flatDir repository to find local artifacts
-        if [ -f "android/build.gradle" ]; then
-          echo "repositories {" >> android/build.gradle
-          echo "    flatDir { dirs 'libs', '../libs', 'app/libs' }" >> android/build.gradle
-          echo "}" >> android/build.gradle
-        fi
+        # 2. Fix app/build.gradle with proper React Native 0.73.6 configuration
+        cp android/app/build.gradle android/app/build.gradle.backup
+        cat > android/app/build.gradle << 'EOF'
+apply plugin: "com.android.application"
+apply plugin: "com.facebook.react"
+
+react {
+    root = file("../../")
+    reactNativeDir = file("../../node_modules/react-native")
+    codegenDir = file("../../node_modules/@react-native/codegen")
+    cliFile = file("../../node_modules/@react-native-community/cli/index.js")
+    enableHermes = true
+}
+
+android {
+    ndkVersion rootProject.ext.ndkVersion
+    compileSdkVersion rootProject.ext.compileSdkVersion
+
+    namespace "com.vyaktiai"
+    defaultConfig {
+        applicationId "com.vyaktiai"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 1
+        versionName "1.0"
+        buildConfigField "boolean", "IS_NEW_ARCHITECTURE_ENABLED", "false"
+    }
+    
+    buildFeatures {
+        buildConfig true
+    }
+
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+        }
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: "libs", include: ["*.jar"])
+    implementation("com.facebook.react:react-android")
+    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.0.0")
+    debugImplementation("com.facebook.flipper:flipper:0.125.0")
+    debugImplementation("com.facebook.flipper:flipper-network-plugin:0.125.0") {
+        exclude group:'com.squareup.okhttp3', module:'okhttp'
+    }
+    debugImplementation("com.facebook.flipper:flipper-fresco-plugin:0.125.0")
+}
+EOF
+        
+        # 3. Fix settings.gradle for proper React Native 0.73.6 auto-linking
+        cp android/settings.gradle android/settings.gradle.backup
+        cat > android/settings.gradle << 'EOF'
+rootProject.name = 'VyaktiAI'
+apply from: file("../node_modules/@react-native-community/cli-platform-android/native_modules.gradle"); applyNativeModulesSettingsGradle(settings)
+include ':app'
+includeBuild('../node_modules/@react-native/gradle-plugin')
+EOF
+        
+        # 4. Create react-native.config.js for proper auto-linking
+        cat > react-native.config.js << 'EOF'
+module.exports = {
+  dependencies: {
+    'react-native-vector-icons': {
+      platforms: {
+        android: {
+          sourceDir: '../node_modules/react-native-vector-icons/android',
+          packageImportPath: 'import io.github.oblador.vectoricons.VectorIconsPackage;',
+        },
+      },
+    },
+  },
+};
+EOF
 
         # Configure native dependencies for Android
         cd android && ./gradlew clean && cd ..
