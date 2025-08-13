@@ -415,7 +415,10 @@ jobs:
             echo '{"name": "VyaktiAI", "displayName": "Vyakti AI"}' > app.json
         fi
         
-        # Fix App.js imports to remove all incompatible dependencies
+        # Comprehensive fix for ALL incompatible dependencies across entire project
+        echo "Fixing all Expo and incompatible dependencies..."
+        
+        # Fix App.js main imports
         sed -i "s/import { StatusBar } from 'expo-status-bar';/\/\/ StatusBar removed - using React Native StatusBar/" App.js
         sed -i "s/import { createStackNavigator } from '@react-navigation\/stack';/import { createNativeStackNavigator } from '@react-navigation\/native-stack';/" App.js
         sed -i "s/createStackNavigator/createNativeStackNavigator/g" App.js
@@ -423,11 +426,51 @@ jobs:
         sed -i "s/import { View, Text, Alert, Platform } from 'react-native';/import { View, Text, Alert, Platform, PermissionsAndroid, StatusBar } from 'react-native';/" App.js
         sed -i "/import \* as Permissions from 'expo-permissions';/d" App.js
         sed -i "s/import { Audio } from 'expo-av';/\/\/ Audio functionality via react-native-audio-recorder-player/" App.js
-        sed -i "s/Permissions\.CAMERA/PermissionsAndroid.PERMISSIONS.CAMERA/g" App.js
-        sed -i "s/Permissions\.AUDIO_RECORDING/PermissionsAndroid.PERMISSIONS.RECORD_AUDIO/g" App.js
-        sed -i "s/Permissions\./PermissionsAndroid./g" App.js
         sed -i "s/<PaperProvider[^>]*>//g" App.js
         sed -i "s/<\/PaperProvider>//g" App.js
+        
+        # Fix ALL Expo dependencies across entire codebase
+        find . -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" | grep -v node_modules | xargs -I {} sh -c '
+          # Linear Gradient
+          sed -i "s/import { LinearGradient } from '"'"'expo-linear-gradient'"'"';/import LinearGradient from '"'"'react-native-linear-gradient'"'"';/" "{}"
+          
+          # Vector Icons
+          sed -i "s/import { Ionicons } from '"'"'@expo\/vector-icons'"'"';/import Icon from '"'"'react-native-vector-icons\/Ionicons'"'"';/" "{}"
+          sed -i "s/import { MaterialIcons } from '"'"'@expo\/vector-icons'"'"';/import Icon from '"'"'react-native-vector-icons\/MaterialIcons'"'"';/" "{}"
+          sed -i "s/import { FontAwesome } from '"'"'@expo\/vector-icons'"'"';/import Icon from '"'"'react-native-vector-icons\/FontAwesome'"'"';/" "{}"
+          sed -i "s/<Ionicons/<Icon/g" "{}"
+          sed -i "s/<\/Ionicons>/<\/Icon>/g" "{}"
+          sed -i "s/<MaterialIcons/<Icon/g" "{}"
+          sed -i "s/<\/MaterialIcons>/<\/Icon>/g" "{}"
+          sed -i "s/<FontAwesome/<Icon/g" "{}"
+          sed -i "s/<\/FontAwesome>/<\/Icon>/g" "{}"
+          
+          # StatusBar
+          sed -i "s/import { StatusBar } from '"'"'expo-status-bar'"'"';/import { StatusBar } from '"'"'react-native'"'"';/" "{}"
+          
+          # Permissions
+          sed -i "/import \* as Permissions from '"'"'expo-permissions'"'"';/d" "{}"
+          sed -i "s/Permissions\.CAMERA/PermissionsAndroid.PERMISSIONS.CAMERA/g" "{}"
+          sed -i "s/Permissions\.AUDIO_RECORDING/PermissionsAndroid.PERMISSIONS.RECORD_AUDIO/g" "{}"
+          sed -i "s/Permissions\./PermissionsAndroid./g" "{}"
+          
+          # Audio
+          sed -i "s/import { Audio } from '"'"'expo-av'"'"';/\/\/ Audio via react-native-audio-recorder-player/" "{}"
+          sed -i "s/Audio\./AudioRecorderPlayer./g" "{}"
+          
+          # Constants
+          sed -i "s/import Constants from '"'"'expo-constants'"'"';/\/\/ Constants removed/" "{}"
+          sed -i "s/Constants\.statusBarHeight/20/g" "{}"
+          
+          # Navigation
+          sed -i "s/import { createStackNavigator } from '"'"'@react-navigation\/stack'"'"';/import { createNativeStackNavigator } from '"'"'@react-navigation\/native-stack'"'"';/" "{}"
+          sed -i "s/createStackNavigator/createNativeStackNavigator/g" "{}"
+          
+          # Paper
+          sed -i "s/import { Provider as PaperProvider } from '"'"'react-native-paper'"'"';/\/\/ Paper Provider removed/" "{}"
+          sed -i "s/<PaperProvider[^>]*>//g" "{}"
+          sed -i "s/<\/PaperProvider>//g" "{}"
+        '
         
         # Create bundle directly without starting Metro server
         mkdir -p android/app/src/main/assets
