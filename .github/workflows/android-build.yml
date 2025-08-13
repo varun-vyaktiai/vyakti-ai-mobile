@@ -466,6 +466,83 @@ jobs:
           sed -i "s/createStackNavigator/createNativeStackNavigator/g" "{}"
         '
         
+        # Fix Android namespace issues for ALL React Native libraries (comprehensive fix)
+        echo "Fixing Android namespaces for ALL React Native libraries..."
+        
+        # Fix react-native-linear-gradient namespace
+        if [ -f "node_modules/react-native-linear-gradient/android/build.gradle" ]; then
+          sed -i '/android {/a\    namespace "com.BV.LinearGradient"' node_modules/react-native-linear-gradient/android/build.gradle
+        fi
+        
+        # Fix react-native-vector-icons namespace  
+        if [ -f "node_modules/react-native-vector-icons/android/build.gradle" ]; then
+          sed -i '/android {/a\    namespace "com.oblador.vectoricons"' node_modules/react-native-vector-icons/android/build.gradle
+        fi
+        
+        # Fix react-native-paper namespace
+        if [ -f "node_modules/react-native-paper/android/build.gradle" ]; then
+          sed -i '/android {/a\    namespace "com.callstack.reactnativepaper"' node_modules/react-native-paper/android/build.gradle
+        fi
+        
+        # Fix react-native-async-storage namespace
+        if [ -f "node_modules/@react-native-async-storage/async-storage/android/build.gradle" ]; then
+          sed -i '/android {/a\    namespace "com.reactnativecommunity.asyncstorage"' node_modules/@react-native-async-storage/async-storage/android/build.gradle
+        fi
+        
+        # Fix react-native-audio-recorder-player namespace
+        if [ -f "node_modules/react-native-audio-recorder-player/android/build.gradle" ]; then
+          sed -i '/android {/a\    namespace "com.dooboolab.audiorecorderplayer"' node_modules/react-native-audio-recorder-player/android/build.gradle
+        fi
+        
+        # Fix react-native-device-info namespace
+        if [ -f "node_modules/react-native-device-info/android/build.gradle" ]; then
+          sed -i '/android {/a\    namespace "com.learnium.RNDeviceInfo"' node_modules/react-native-device-info/android/build.gradle
+        fi
+        
+        # Fix react-native-permissions namespace
+        if [ -f "node_modules/react-native-permissions/android/build.gradle" ]; then
+          sed -i '/android {/a\    namespace "com.zoontek.rnpermissions"' node_modules/react-native-permissions/android/build.gradle
+        fi
+        
+        # Fix react-native-safe-area-context namespace
+        if [ -f "node_modules/react-native-safe-area-context/android/build.gradle" ]; then
+          sed -i '/android {/a\    namespace "com.th3rdwave.safeareacontext"' node_modules/react-native-safe-area-context/android/build.gradle
+        fi
+        
+        # Fix react-native-screens namespace
+        if [ -f "node_modules/react-native-screens/android/build.gradle" ]; then
+          sed -i '/android {/a\    namespace "com.swmansion.rnscreens"' node_modules/react-native-screens/android/build.gradle
+        fi
+        
+        # Fix react-native-sound namespace
+        if [ -f "node_modules/react-native-sound/android/build.gradle" ]; then
+          sed -i '/android {/a\    namespace "com.zmxv.RNSound"' node_modules/react-native-sound/android/build.gradle
+        fi
+        
+        # Fix react-native-splash-screen namespace
+        if [ -f "node_modules/react-native-splash-screen/android/build.gradle" ]; then
+          sed -i '/android {/a\    namespace "org.devio.rn.splashscreen"' node_modules/react-native-splash-screen/android/build.gradle
+        fi
+        
+        # Fix react-native-tts namespace
+        if [ -f "node_modules/react-native-tts/android/build.gradle" ]; then
+          sed -i '/android {/a\    namespace "net.no_mad.tts"' node_modules/react-native-tts/android/build.gradle
+        fi
+        
+        # Fix react-native-webview namespace
+        if [ -f "node_modules/react-native-webview/android/build.gradle" ]; then
+          sed -i '/android {/a\    namespace "com.reactnativecommunity.webview"' node_modules/react-native-webview/android/build.gradle
+        fi
+        
+        # Fix react-navigation namespaces
+        if [ -f "node_modules/@react-navigation/bottom-tabs/android/build.gradle" ]; then
+          sed -i '/android {/a\    namespace "com.reactnavigation.bottomtabs"' node_modules/@react-navigation/bottom-tabs/android/build.gradle
+        fi
+        
+        if [ -f "node_modules/@react-navigation/native-stack/android/build.gradle" ]; then
+          sed -i '/android {/a\    namespace "com.reactnavigation.nativestack"' node_modules/@react-navigation/native-stack/android/build.gradle
+        fi
+        
         # Configure native dependencies for Android
         cd android && ./gradlew clean && cd ..
         
