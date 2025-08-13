@@ -90,39 +90,44 @@ jobs:
         }
         GRADLE_ROOT_END
         
-        # Create app build.gradle
+        # Create app build.gradle - EXACT successful configuration from 15-hour solution
         cat > android/app/build.gradle << 'GRADLE_APP_END'
         apply plugin: "com.android.application"
         apply plugin: "org.jetbrains.kotlin.android"
-        apply plugin: "com.facebook.react"
-        
-        react {
-            entryFile = "index.js"
-            reactNativeDir = rootProject.file("../node_modules/react-native")
-            codegenDir = rootProject.file("../node_modules/@react-native/codegen")
-            cliFile = rootProject.file("../node_modules/@react-native/cli/build/bin.js")
-            debuggableVariants = ["liveReload", "nightly", "staging"]
-        }
-        
-        def enableSeparateBuildPerCPUArchitecture = true
-        def enableProguardInReleaseBuilds = true
-        def jscFlavor = 'org.webkit:android-jsc:+'
+
+        // Import React Native modules configuration
+        apply from: file("../../node_modules/@react-native-community/cli-platform-android/native_modules.gradle")
+        applyNativeModulesAppBuildGradle(project)
+
+        import com.android.build.OutputFile
+
+        // React Native configuration
+        project.ext.react = [
+            enableHermes: false,
+            bundleInDebug: false,
+            bundleInRelease: true,
+            bundleCommand: "bundle",
+            iconWithBadge: false,
+            entryFile: "index.js"
+        ]
+
         
         android {
             ndkVersion rootProject.ext.ndkVersion
-            compileSdkVersion rootProject.ext.compileSdkVersion
-            namespace "com.vyaktiai.mobile"
+            compileSdk rootProject.ext.compileSdkVersion
+
+            namespace "com.vyaktiai"
+            
+            buildFeatures {
+                buildConfig true
+            }
             
             defaultConfig {
-                applicationId "com.vyaktiai.mobile"
+                applicationId "com.vyaktiai"
                 minSdkVersion rootProject.ext.minSdkVersion
-                targetSdkVersion 35
+                targetSdkVersion rootProject.ext.targetSdkVersion
                 versionCode 1
-                versionName "1.0.0"
-                multiDexEnabled true
-                ndk {
-                    abiFilters "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
-                }
+                versionName "1.0"
             }
             
             signingConfigs {
@@ -148,41 +153,42 @@ jobs:
             splits {
                 abi {
                     reset()
-                    enable enableSeparateBuildPerCPUArchitecture
+                    enable false
                     universalApk false
-                    include "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
+                    include "armeabi-v7a", "x86", "arm64-v8a", "x86_64"
                 }
             }
-            
+
             applicationVariants.all { variant ->
                 variant.outputs.each { output ->
-                    def versionCodes = ["armeabi-v7a": 1, "arm64-v8a": 2, "x86": 3, "x86_64": 4]
-                    def abi = output.getFilter(com.android.build.OutputFile.ABI)
+                    def versionCodes = ["armeabi-v7a": 1, "x86": 2, "arm64-v8a": 3, "x86_64": 4]
+                    def abi = output.getFilter(OutputFile.ABI)
                     if (abi != null) {
                         output.versionCodeOverride = defaultConfig.versionCode * 1000 + versionCodes.get(abi)
                     }
                 }
             }
+
+            packagingOptions {
+                pickFirst "lib/x86/libc++_shared.so"
+                pickFirst "lib/x86_64/libc++_shared.so"
+                pickFirst "lib/arm64-v8a/libc++_shared.so"
+                pickFirst "lib/armeabi-v7a/libc++_shared.so"
+                pickFirst "**/libc++_shared.so"
+                pickFirst "**/libjsc.so"
+            }
         }
-        
+
         dependencies {
-            implementation fileTree(dir: "libs", include: ["*.jar"])
-            implementation("com.facebook.react:react-android")
-            implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.0.0")
-            implementation 'androidx.multidex:multidex:2.0.1'
-            debugImplementation("com.facebook.flipper:flipper:0.125.0")
-            debugImplementation("com.facebook.flipper:flipper-network-plugin:0.125.0") {
-                exclude group:'com.squareup.okhttp3', module:'okhttp'
-            }
-            debugImplementation("com.facebook.flipper:flipper-fresco-plugin:0.125.0")
-            if (hermesEnabled.toBoolean()) {
-                implementation("com.facebook.react:hermes-android")
-            } else {
-                implementation jscFlavor
-            }
+            implementation "com.facebook.react:react-native:+"
+            implementation "org.webkit:android-jsc:+"
+
+            // React Native navigation
+            implementation "androidx.appcompat:appcompat:1.6.1"
+            implementation "com.swmansion.gesturehandler.react:react-native-gesture-handler:+"
+            implementation "com.th3rdwave:react-native-safe-area-context:+"
+            implementation "com.swmansion.rnscreens:react-native-screens:+"
         }
-        
-        apply from: file("../../node_modules/@react-native-community/cli-platform-android/native_modules.gradle"); applyNativeModulesAppBuildGradle(project)
         GRADLE_APP_END
         
         # Create settings.gradle
