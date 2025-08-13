@@ -249,7 +249,7 @@ jobs:
           gradle_file="node_modules/$lib/android/build.gradle"
           
           if [ -f "$gradle_file" ]; then
-            echo "Fixing $lib: namespace + buildConfig..."
+            echo "Fixing $lib: namespace + buildConfig + dependency resolution..."
             
             # Add namespace if missing
             if ! grep -q "namespace" "$gradle_file"; then
@@ -260,10 +260,78 @@ jobs:
             if ! grep -q "buildFeatures" "$gradle_file"; then
               sed -i '/namespace/a\    buildFeatures {\n        buildConfig true\n    }' "$gradle_file"
             fi
+            
+            # CRITICAL: Fix React Native dependency resolution
+            # Remove ALL React Native dependency declarations - let auto-linking handle it
+            sed -i '/implementation.*com\.facebook\.react:react-native/d' "$gradle_file"
+            sed -i '/implementation.*"com\.facebook\.react:react-native/d' "$gradle_file"
+            sed -i '/api.*com\.facebook\.react:react-native/d' "$gradle_file"
+            sed -i '/api.*"com\.facebook\.react:react-native/d' "$gradle_file"
+            sed -i '/compileOnly.*com\.facebook\.react:react-native/d' "$gradle_file"
+            sed -i '/compileOnly.*"com\.facebook\.react:react-native/d' "$gradle_file"
+            
+            # Also remove any version-pinned dependencies
+            sed -i '/implementation.*com\.facebook\.react:react-native:.*$/d' "$gradle_file"
+            sed -i '/implementation.*"com\.facebook\.react:react-native:.*"$/d' "$gradle_file"
+            sed -i '/api.*com\.facebook\.react:react-native:.*$/d' "$gradle_file"
+            sed -i '/api.*"com\.facebook\.react:react-native:.*"$/d' "$gradle_file"
+            
+            # Critical: Replace with project dependency to local React Native 
+            if ! grep -q "project.*ReactAndroid" "$gradle_file" && ! grep -q "React Native from main app" "$gradle_file"; then
+              sed -i '/dependencies {/a\    // React Native from main app via auto-linking\n    implementation project(path: ":ReactAndroid")' "$gradle_file"
+            fi
+            
+            echo "Fixed React Native dependencies in $lib - using project reference"
           fi
         done
         
         echo "=== All React Native library namespace and buildConfig issues fixed ==="
+
+    - name: Ensure React Native Project Configuration
+      run: |
+        echo "=== Ensuring React Native Project Configuration ==="
+        
+        # Ensure settings.gradle includes React Native project properly
+        if [ -f android/settings.gradle ]; then
+          echo "Checking settings.gradle for React Native inclusion..."
+          
+          # Add React Native if not present
+          if ! grep -q "include.*ReactAndroid" android/settings.gradle; then
+            echo "include ':ReactAndroid'" >> android/settings.gradle
+            echo "project(':ReactAndroid').projectDir = new File(rootProject.projectDir, '../node_modules/react-native/ReactAndroid')" >> android/settings.gradle
+          fi
+          
+          echo "Current settings.gradle content:"
+          cat android/settings.gradle
+        fi
+        
+        echo "=== React Native project configuration complete ==="
+
+    - name: Fix Gradle Deprecation Warnings and Compatibility
+      run: |
+        echo "=== Fixing Gradle Deprecation Warnings ==="
+        
+        # Update gradle.properties to suppress deprecation warnings and improve compatibility
+        cat >> android/gradle.properties << 'EOF'
+        
+        # Gradle 8.x compatibility settings to prevent log truncation
+        org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m
+        org.gradle.parallel=true
+        org.gradle.daemon=true
+        org.gradle.configureondemand=false
+        
+        # Suppress deprecation warnings that cause log truncation
+        org.gradle.warning.mode=none
+        
+        # React Native specific settings for Gradle 8.x
+        android.enableJetifier=true
+        android.useAndroidX=true
+        
+        # Enable Gradle build cache
+        org.gradle.caching=true
+        EOF
+        
+        echo "=== Gradle configuration optimized to prevent truncation ==="
 
     - name: Fix React Native Dependency Resolution
       run: |
@@ -289,6 +357,28 @@ jobs:
         rm -rf ~/.gradle/caches/modules-2/files-2.1/com.th3rdwave*
         
         echo "=== React Native dependency resolution fixed ==="
+
+    - name: Clear All Gradle Caches and Force Fresh Build
+      run: |
+        echo "=== Clearing All Gradle Caches for Fresh Dependency Resolution ==="
+        
+        # Clear all possible Gradle cache locations
+        rm -rf ~/.gradle/caches/
+        rm -rf ~/.gradle/wrapper/
+        rm -rf android/.gradle/
+        rm -rf android/app/.gradle/
+        rm -rf android/build/
+        rm -rf android/app/build/
+        
+        # Clear specific React Native cache locations
+        rm -rf ~/.gradle/caches/modules-2/files-2.1/com.facebook.react
+        rm -rf ~/.gradle/caches/transforms-3/
+        rm -rf node_modules/react-native/ReactAndroid/.gradle/
+        
+        # Force Gradle to download fresh wrapper
+        cd android && ./gradlew --stop
+        
+        echo "=== All caches cleared, ready for fresh build ==="
 
     - name: Verify Auto-linking Configuration
       run: |
@@ -338,19 +428,31 @@ jobs:
       working-directory: android
       run: |
         echo "Building Debug APK with all fixes applied..."
-        gradle :app:assembleDebug --no-daemon --stacktrace --info
+        gradle :app:assembleDebug \
+          --no-daemon \
+          --warning-mode=none \
+          --console=plain \
+          --max-workers=1
 
     - name: Build Release APK (Final Success)
       working-directory: android
       run: |
         echo "Building Release APK with all fixes applied..."
-        gradle :app:assembleRelease --no-daemon --stacktrace --info
+        gradle :app:assembleRelease \
+          --no-daemon \
+          --warning-mode=none \
+          --console=plain \
+          --max-workers=1
 
     - name: Build Release AAB (Final Success)
       working-directory: android
       run: |
         echo "Building Release AAB for Google Play Store..."
-        gradle :app:bundleRelease --no-daemon --stacktrace --info
+        gradle :app:bundleRelease \
+          --no-daemon \
+          --warning-mode=none \
+          --console=plain \
+          --max-workers=1
 
     - name: Verify Final Complete Build Success
       run: |
