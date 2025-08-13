@@ -27,20 +27,20 @@ jobs:
       with:
         node-version: '18'
 
-    - name: Fix All File Permissions
+    - name: Use System Gradle Instead of Wrapper
       run: |
-        echo "=== Fixing All File Permissions ==="
+        echo "=== Using System Gradle to Bypass Wrapper Issues ==="
         
-        # Fix gradlew permissions across the project
-        find . -name "gradlew" -exec chmod +x {} \;
+        # Install Gradle 8.1.1 system-wide
+        cd /opt
+        sudo wget https://services.gradle.org/distributions/gradle-8.1.1-bin.zip
+        sudo unzip gradle-8.1.1-bin.zip
+        sudo ln -sf /opt/gradle-8.1.1/bin/gradle /usr/local/bin/gradle
         
-        # Fix any gradle wrapper properties files
-        find . -name "gradle-wrapper.properties" -exec chmod +r {} \;
+        # Verify system gradle works
+        gradle --version
         
-        # Make android directory accessible
-        chmod -R 755 android/
-        
-        echo "=== All file permissions fixed ==="
+        echo "=== System Gradle 8.1.1 ready - bypassing wrapper completely ==="
 
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
@@ -390,10 +390,8 @@ jobs:
         rm -rf ~/.gradle/caches/transforms-3/
         rm -rf node_modules/react-native/ReactAndroid/.gradle/
         
-        # Fix gradlew permissions and stop daemon
-        cd android 
-        chmod +x gradlew
-        ./gradlew --stop || echo "Gradle daemon not running"
+        # Stop any gradle daemons using system gradle
+        gradle --stop || echo "Gradle daemon not running"
         
         echo "=== All caches cleared, ready for fresh build ==="
 
@@ -435,21 +433,18 @@ jobs:
       working-directory: android
       run: |
         echo "=== Testing Complete Fixed Configuration ==="
-        chmod +x gradlew
-        ./gradlew projects --no-daemon --warning-mode=none
+        gradle projects --no-daemon --warning-mode=none
 
     - name: Clean Build Directory
       working-directory: android
       run: |
-        chmod +x gradlew
-        ./gradlew clean --no-daemon --warning-mode=none
+        gradle clean --no-daemon --warning-mode=none
 
     - name: Build Debug APK (Final Success)
       working-directory: android
       run: |
         echo "Building Debug APK with all fixes applied..."
-        chmod +x gradlew
-        ./gradlew :app:assembleDebug \
+        gradle :app:assembleDebug \
           --no-daemon \
           --warning-mode=none \
           --console=plain \
@@ -459,8 +454,7 @@ jobs:
       working-directory: android
       run: |
         echo "Building Release APK with all fixes applied..."
-        chmod +x gradlew
-        ./gradlew :app:assembleRelease \
+        gradle :app:assembleRelease \
           --no-daemon \
           --warning-mode=none \
           --console=plain \
@@ -470,8 +464,7 @@ jobs:
       working-directory: android
       run: |
         echo "Building Release AAB for Google Play Store..."
-        chmod +x gradlew
-        ./gradlew :app:bundleRelease \
+        gradle :app:bundleRelease \
           --no-daemon \
           --warning-mode=none \
           --console=plain \
