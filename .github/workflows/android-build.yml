@@ -549,15 +549,20 @@ jobs:
         echo "Installing missing React Native gesture handler..."
         npm install react-native-gesture-handler@2.14.0
         
-        # Create minimal working build.gradle with proper repositories
-        echo "Fixing Android build configuration for React Native 0.73.6..."
-        echo "// Additional repositories for React Native 0.73.6" >> android/build.gradle
-        echo "allprojects {" >> android/build.gradle
-        echo "    repositories {" >> android/build.gradle
-        echo "        mavenCentral()" >> android/build.gradle
-        echo "        maven { url \"https://repo1.maven.org/maven2\" }" >> android/build.gradle
-        echo "    }" >> android/build.gradle
-        echo "}" >> android/build.gradle
+        # Fix React Native dependency resolution for 0.73.6
+        echo "Fixing React Native 0.73.6 dependency resolution..."
+        
+        # The issue is that React Native 0.73.6 uses react-android artifact, not react-native
+        # Add dependency resolution rules to app/build.gradle
+        if [ -f "android/app/build.gradle" ]; then
+          echo "
+configurations.all {
+    resolutionStrategy {
+        force 'com.facebook.react:react-android:0.73.6'
+        force 'com.facebook.react:react-native:0.73.6'
+    }
+}" >> android/app/build.gradle
+        fi
 
         # Configure native dependencies for Android
         cd android && ./gradlew clean && cd ..
