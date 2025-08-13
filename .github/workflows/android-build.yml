@@ -241,24 +241,13 @@ jobs:
         find node_modules/react-native/android -name "*.aar" -exec cp {} android/libs/ \;
         
         # Add React Native dependencies to all library build.gradle files
-        find node_modules -name "build.gradle" -path "*/react-native-*/android/build.gradle" -exec sed -i '/dependencies {/a\
-    implementation files("$rootDir/libs/react-native-0.73.6-release.aar")\
-    implementation "com.facebook.react:react-android:0.73.6"' {} \;
-        find node_modules -name "build.gradle" -path "*/@react-native*/android/build.gradle" -exec sed -i '/dependencies {/a\
-    implementation files("$rootDir/libs/react-native-0.73.6-release.aar")\
-    implementation "com.facebook.react:react-android:0.73.6"' {} \;
+        find node_modules -name "build.gradle" -path "*/react-native-*/android/build.gradle" -exec sed -i '/dependencies {/a\    implementation files("$rootDir/libs/react-native-0.73.6-release.aar")' {} \;
+        find node_modules -name "build.gradle" -path "*/@react-native*/android/build.gradle" -exec sed -i '/dependencies {/a\    implementation files("$rootDir/libs/react-native-0.73.6-release.aar")' {} \;
         
         # Add repositories with React Native path
-        sed -i '/repositories {/a\
-        maven {\
-            url("$rootDir/../node_modules/react-native/android")\
-        }\
-        maven {\
-            url("$rootDir/../node_modules/jsc-android/dist")\
-        }\
-        flatDir {\
-            dirs "$rootDir/libs"\
-        }' android/build.gradle
+        sed -i '/repositories {/a\        maven { url("$rootDir/../node_modules/react-native/android") }' android/build.gradle
+        sed -i '/repositories {/a\        maven { url("$rootDir/../node_modules/jsc-android/dist") }' android/build.gradle  
+        sed -i '/repositories {/a\        flatDir { dirs "$rootDir/libs" }' android/build.gradle
         
         # Add resolution strategy to app build.gradle
         echo "" >> android/app/build.gradle
