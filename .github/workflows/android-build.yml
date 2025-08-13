@@ -549,17 +549,28 @@ jobs:
         echo "Installing missing React Native gesture handler..."
         npm install react-native-gesture-handler@2.14.0
         
-        # Fix React Native dependency resolution for 0.73.6
-        echo "Fixing React Native 0.73.6 dependency resolution..."
+        # Fix React Native 0.73.6 auto-linking and local dependencies
+        echo "Configuring React Native 0.73.6 auto-linking..."
         
-        # Add dependency resolution rules to app/build.gradle
+        # Use auto-linking instead of manual Maven resolution
+        # Add apply plugin: "com.facebook.react.settings" to settings.gradle if missing
+        if ! grep -q "com.facebook.react.settings" android/settings.gradle; then
+          echo "apply plugin: 'com.facebook.react.settings'" >> android/settings.gradle
+        fi
+        
+        # Ensure includeBuild is present in settings.gradle
+        if ! grep -q "includeBuild" android/settings.gradle; then
+          echo "includeBuild('../node_modules/@react-native/gradle-plugin')" >> android/settings.gradle
+        fi
+        
+        # Force React Native to use local installation in app/build.gradle
         if [ -f "android/app/build.gradle" ]; then
-          echo "configurations.all {" >> android/app/build.gradle
-          echo "    resolutionStrategy {" >> android/app/build.gradle
-          echo "        force 'com.facebook.react:react-android:0.73.6'" >> android/app/build.gradle
-          echo "        force 'com.facebook.react:react-native:0.73.6'" >> android/app/build.gradle
-          echo "    }" >> android/app/build.gradle
-          echo "}" >> android/app/build.gradle
+          echo "project.ext.react = [" >> android/app/build.gradle
+          echo "    enableHermes: true," >> android/app/build.gradle
+          echo "    root: '../../'," >> android/app/build.gradle
+          echo "    reactNativeDir: '../../node_modules/react-native'," >> android/app/build.gradle
+          echo "    cliPath: '../../node_modules/@react-native-community/cli/index.js'" >> android/app/build.gradle
+          echo "]" >> android/app/build.gradle
         fi
 
         # Configure native dependencies for Android
