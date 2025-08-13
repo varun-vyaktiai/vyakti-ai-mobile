@@ -230,6 +230,12 @@ jobs:
         # Fix any remaining Android library build.gradle files
         find node_modules -name "build.gradle" -path "*/android/build.gradle" -exec grep -l "apply plugin.*android.library" {} \; | xargs -I {} sed -i '/android {/a\    namespace "com.reactnative.fallback"\n    buildFeatures {\n        buildConfig true\n    }' {}
 
+        # Fix AndroidManifest.xml package conflicts
+        find node_modules -name "AndroidManifest.xml" -path "*/android/src/main/AndroidManifest.xml" -exec sed -i 's/package="[^"]*"//g' {} \;
+        
+        # Suppress compileSdk warning
+        echo "android.suppressUnsupportedCompileSdk=35" >> android/gradle.properties
+
         # Create debug keystore
         keytool -genkey -v -keystore android/app/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
 
