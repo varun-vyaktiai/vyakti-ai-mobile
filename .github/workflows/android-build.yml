@@ -782,6 +782,34 @@ jobs:
         echo '    </item>' >> android/app/src/main/res/drawable/rn_edit_text_material.xml
         echo '</selector>' >> android/app/src/main/res/drawable/rn_edit_text_material.xml
         
+        # Create splash screen resources in react-native-splash-screen library
+        mkdir -p node_modules/react-native-splash-screen/android/src/main/res/layout
+        echo '<?xml version="1.0" encoding="utf-8"?>' > node_modules/react-native-splash-screen/android/src/main/res/layout/launch_screen.xml
+        echo '<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"' >> node_modules/react-native-splash-screen/android/src/main/res/layout/launch_screen.xml
+        echo '    android:layout_width="match_parent"' >> node_modules/react-native-splash-screen/android/src/main/res/layout/launch_screen.xml
+        echo '    android:layout_height="match_parent"' >> node_modules/react-native-splash-screen/android/src/main/res/layout/launch_screen.xml
+        echo '    android:background="@android:color/white"' >> node_modules/react-native-splash-screen/android/src/main/res/layout/launch_screen.xml
+        echo '    android:orientation="vertical"' >> node_modules/react-native-splash-screen/android/src/main/res/layout/launch_screen.xml
+        echo '    android:gravity="center">' >> node_modules/react-native-splash-screen/android/src/main/res/layout/launch_screen.xml
+        echo '    <TextView' >> node_modules/react-native-splash-screen/android/src/main/res/layout/launch_screen.xml
+        echo '        android:layout_width="wrap_content"' >> node_modules/react-native-splash-screen/android/src/main/res/layout/launch_screen.xml
+        echo '        android:layout_height="wrap_content"' >> node_modules/react-native-splash-screen/android/src/main/res/layout/launch_screen.xml
+        echo '        android:text="Vyakti AI"' >> node_modules/react-native-splash-screen/android/src/main/res/layout/launch_screen.xml
+        echo '        android:textSize="24sp" />' >> node_modules/react-native-splash-screen/android/src/main/res/layout/launch_screen.xml
+        echo '</LinearLayout>' >> node_modules/react-native-splash-screen/android/src/main/res/layout/launch_screen.xml
+        
+        mkdir -p node_modules/react-native-splash-screen/android/src/main/res/values
+        echo '<?xml version="1.0" encoding="utf-8"?>' > node_modules/react-native-splash-screen/android/src/main/res/values/styles.xml
+        echo '<resources>' >> node_modules/react-native-splash-screen/android/src/main/res/values/styles.xml
+        echo '    <style name="SplashScreen_SplashTheme" parent="android:Theme">' >> node_modules/react-native-splash-screen/android/src/main/res/values/styles.xml
+        echo '        <item name="android:windowBackground">@android:color/white</item>' >> node_modules/react-native-splash-screen/android/src/main/res/values/styles.xml
+        echo '    </style>' >> node_modules/react-native-splash-screen/android/src/main/res/values/styles.xml
+        echo '    <style name="SplashScreen_Fullscreen" parent="android:Theme">' >> node_modules/react-native-splash-screen/android/src/main/res/values/styles.xml
+        echo '        <item name="android:windowBackground">@android:color/white</item>' >> node_modules/react-native-splash-screen/android/src/main/res/values/styles.xml
+        echo '        <item name="android:windowFullscreen">true</item>' >> node_modules/react-native-splash-screen/android/src/main/res/values/styles.xml
+        echo '    </style>' >> node_modules/react-native-splash-screen/android/src/main/res/values/styles.xml
+        echo '</resources>' >> node_modules/react-native-splash-screen/android/src/main/res/values/styles.xml
+        
         # Configure native dependencies for Android
         cd android && ./gradlew clean && cd ..
         
