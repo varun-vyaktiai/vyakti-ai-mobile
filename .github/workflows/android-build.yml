@@ -824,11 +824,53 @@ jobs:
         </manifest>
         EOF
         
-        # Disable CMake for react-native-screens to prevent build failures
-        if [ -f "node_modules/react-native-screens/android/build.gradle" ]; then
-          sed -i '/cmake/d' node_modules/react-native-screens/android/build.gradle
-          sed -i '/externalNativeBuild/,/}/d' node_modules/react-native-screens/android/build.gradle
-        fi
+        # Fix react-native-screens build.gradle syntax errors and duplicates
+        cat > node_modules/react-native-screens/android/build.gradle << 'EOF'
+        apply plugin: 'com.android.library'
+        apply plugin: 'kotlin-android'
+        
+        android {
+            namespace "com.swmansion.rnscreens"
+            compileSdkVersion 33
+            
+            defaultConfig {
+                minSdkVersion 21
+                targetSdkVersion 33
+                versionCode 1
+                versionName "1.0"
+            }
+            
+            buildFeatures {
+                buildConfig true
+            }
+            
+            buildTypes {
+                release {
+                    minifyEnabled false
+                    proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+                }
+            }
+            
+            compileOptions {
+                sourceCompatibility JavaVersion.VERSION_1_8
+                targetCompatibility JavaVersion.VERSION_1_8
+            }
+            
+            kotlinOptions {
+                jvmTarget = "1.8"
+            }
+        }
+        
+        repositories {
+            google()
+            mavenCentral()
+        }
+        
+        dependencies {
+            implementation 'com.facebook.react:react-native:+'
+            implementation "org.jetbrains.kotlin:kotlin-stdlib:1.8.10"
+        }
+        EOF
         
         # Configure native dependencies for Android
         cd android && ./gradlew clean && cd ..
