@@ -551,16 +551,14 @@ jobs:
         
         # Create minimal working build.gradle with proper repositories
         echo "Fixing Android build configuration for React Native 0.73.6..."
-        cat >> android/build.gradle << 'EOF'
-
+        echo "
 // Additional repositories for React Native 0.73.6
 allprojects {
     repositories {
         mavenCentral()
-        maven { url "https://repo1.maven.org/maven2" }
+        maven { url \"https://repo1.maven.org/maven2\" }
     }
-}
-EOF
+}" >> android/build.gradle
 
         # Configure native dependencies for Android
         cd android && ./gradlew clean && cd ..
