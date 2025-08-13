@@ -40,7 +40,7 @@ jobs:
       uses: android-actions/setup-android@v3
       with:
         cmdline-tools-version: 11076708
-        packages: "platform-tools platforms;android-35 build-tools;35.0.0 ndk;25.1.8937393"
+        packages: "platform-tools platforms;android-35 build-tools;35.0.0 ndk;25.1.8937393 cmake;3.22.1"
 
     - name: Install Dependencies
       run: npm install --legacy-peer-deps
@@ -756,11 +756,11 @@ jobs:
         echo '    </item>' >> android/app/src/main/res/drawable/rn_edit_text_material.xml
         echo '</selector>' >> android/app/src/main/res/drawable/rn_edit_text_material.xml
         
-        # Fix splash screen by creating proper resources and modifying build.gradle
-        mkdir -p node_modules/react-native-splash-screen/android/src/main/res/layout
-        mkdir -p node_modules/react-native-splash-screen/android/src/main/res/values
+        # Clean all splash screen resources to prevent duplicates
+        rm -rf node_modules/react-native-splash-screen/android/src/main/res/*
         
-        # Create launch_screen.xml layout
+        # Create only essential splash screen layout without duplicates
+        mkdir -p node_modules/react-native-splash-screen/android/src/main/res/layout
         cat > node_modules/react-native-splash-screen/android/src/main/res/layout/launch_screen.xml << 'EOF'
         <?xml version="1.0" encoding="utf-8"?>
         <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
@@ -776,20 +776,6 @@ jobs:
                 android:textSize="24sp"
                 android:textColor="@android:color/black" />
         </LinearLayout>
-        EOF
-        
-        # Create styles.xml with splash screen themes
-        cat > node_modules/react-native-splash-screen/android/src/main/res/values/styles.xml << 'EOF'
-        <?xml version="1.0" encoding="utf-8"?>
-        <resources>
-            <style name="SplashScreen_SplashTheme" parent="android:Theme">
-                <item name="android:windowBackground">@android:color/white</item>
-            </style>
-            <style name="SplashScreen_Fullscreen" parent="android:Theme">
-                <item name="android:windowBackground">@android:color/white</item>
-                <item name="android:windowFullscreen">true</item>
-            </style>
-        </resources>
         EOF
         
         # Modify splash screen build.gradle to include proper namespace
@@ -837,6 +823,12 @@ jobs:
         <manifest xmlns:android="http://schemas.android.com/apk/res/android">
         </manifest>
         EOF
+        
+        # Disable CMake for react-native-screens to prevent build failures
+        if [ -f "node_modules/react-native-screens/android/build.gradle" ]; then
+          sed -i '/cmake/d' node_modules/react-native-screens/android/build.gradle
+          sed -i '/externalNativeBuild/,/}/d' node_modules/react-native-screens/android/build.gradle
+        fi
         
         # Configure native dependencies for Android
         cd android && ./gradlew clean && cd ..
