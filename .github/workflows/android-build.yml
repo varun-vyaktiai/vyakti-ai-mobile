@@ -396,48 +396,28 @@ jobs:
         echo "" >> metro.config.js
         echo "module.exports = mergeConfig(defaultConfig, config);" >> metro.config.js
         
+        # Create index.js entry file if it doesn't exist
+        if [ ! -f "index.js" ]; then
+            echo "import {AppRegistry} from 'react-native';" > index.js
+            echo "import App from './App';" >> index.js
+            echo "import {name as appName} from './app.json';" >> index.js
+            echo "AppRegistry.registerComponent(appName, () => App);" >> index.js
+        fi
+        
+        # Create app.json if it doesn't exist
+        if [ ! -f "app.json" ]; then
+            echo '{"name": "VyaktiAI", "displayName": "Vyakti AI"}' > app.json
+        fi
+        
         mkdir -p android/app/src/main/assets
         npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res/
         
-    - name: Use Bypass Build - Create Minimal APK
+    - name: Build Full-Featured APK with All Vyakti AI Features
       run: |
         cd android
         
-        # Create a simplified app build.gradle that bypasses React Native library dependencies
-        cat > app/build.gradle << 'EOF'
-        apply plugin: "com.android.application"
-        
-        android {
-            namespace "com.vyaktiai"
-            compileSdk 34
-            
-            defaultConfig {
-                applicationId "com.vyaktiai"
-                minSdk 21
-                targetSdk 34
-                versionCode 1
-                versionName "1.0"
-            }
-            
-            buildTypes {
-                release {
-                    minifyEnabled false
-                    proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-                }
-            }
-            
-            compileOptions {
-                sourceCompatibility JavaVersion.VERSION_1_8
-                targetCompatibility JavaVersion.VERSION_1_8
-            }
-        }
-        
-        dependencies {
-            implementation 'androidx.appcompat:appcompat:1.6.1'
-            implementation 'com.facebook.react:react-native:0.73.6'
-        }
-        EOF
-        
+        # Build the complete APK with all React Native libraries and features
+        echo "Building full Vyakti AI APK with all features..."
         gradle clean
         gradle assembleDebug
 
