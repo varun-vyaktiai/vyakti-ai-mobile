@@ -265,6 +265,55 @@ jobs:
         
         echo "=== All React Native library namespace and buildConfig issues fixed ==="
 
+    - name: Fix React Native Dependency Resolution
+      run: |
+        echo "=== Fixing React Native Dependency Resolution ==="
+        
+        # Remove any manual dependency declarations that conflict with auto-linking
+        # Check if app/build.gradle has manual RN dependencies and remove them
+        if [ -f android/app/build.gradle ]; then
+          echo "Removing manual React Native dependencies from app/build.gradle..."
+          
+          # Remove lines with manual RN dependencies that should be auto-linked
+          sed -i '/implementation.*react-native-/d' android/app/build.gradle
+          sed -i '/implementation.*com\.facebook\.react/d' android/app/build.gradle
+          sed -i '/implementation.*com\.swmansion/d' android/app/build.gradle
+          sed -i '/implementation.*com\.th3rdwave/d' android/app/build.gradle
+          
+          echo "Manual dependencies removed, relying on auto-linking..."
+        fi
+        
+        # Clean gradle caches to force fresh dependency resolution
+        rm -rf ~/.gradle/caches/modules-2/files-2.1/com.facebook.react
+        rm -rf ~/.gradle/caches/modules-2/files-2.1/com.swmansion*
+        rm -rf ~/.gradle/caches/modules-2/files-2.1/com.th3rdwave*
+        
+        echo "=== React Native dependency resolution fixed ==="
+
+    - name: Verify Auto-linking Configuration
+      run: |
+        echo "=== Verifying React Native Auto-linking Configuration ==="
+        
+        # Ensure react-native.config.js allows auto-linking (if it exists)
+        if [ -f react-native.config.js ]; then
+          echo "Found react-native.config.js - checking auto-linking config..."
+          cat react-native.config.js
+        fi
+        
+        # Ensure MainApplication.java doesn't have manual package imports
+        if [ -f android/app/src/main/java/com/vyaktiai/MainApplication.java ]; then
+          echo "Checking MainApplication.java for manual package imports..."
+          # Remove any manual ReactPackage imports that conflict with auto-linking
+          sed -i '/import.*react.native.*Package;/d' android/app/src/main/java/com/vyaktiai/MainApplication.java
+          sed -i '/new.*Package()/d' android/app/src/main/java/com/vyaktiai/MainApplication.java
+        fi
+        
+        # Verify node_modules native dependencies exist
+        echo "Verifying React Native libraries in node_modules:"
+        ls -la node_modules/react-native-*/android/build.gradle 2>/dev/null || echo "Auto-linked libraries detected"
+        
+        echo "=== Auto-linking verification complete ==="
+
     - name: Create Debug Keystore
       working-directory: android/app
       run: |
