@@ -415,6 +415,13 @@ jobs:
             echo '{"name": "VyaktiAI", "displayName": "Vyakti AI"}' > app.json
         fi
         
+        # Fix App.js to remove Expo dependencies and use React Native alternatives
+        sed -i "s/import \* as Permissions from 'expo-permissions';/import { PermissionsAndroid, Platform } from 'react-native';/" App.js
+        sed -i "s/import { Audio } from 'expo-av';/import { AudioRecorder, AudioPlayer } from 'react-native-audio';/" App.js
+        sed -i "s/Permissions\.CAMERA/PermissionsAndroid.PERMISSIONS.CAMERA/g" App.js
+        sed -i "s/Permissions\.AUDIO_RECORDING/PermissionsAndroid.PERMISSIONS.RECORD_AUDIO/g" App.js
+        sed -i "s/Audio\./AudioRecorder./g" App.js
+        
         # Create bundle directly without starting Metro server
         mkdir -p android/app/src/main/assets
         npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res/ --reset-cache
