@@ -597,12 +597,11 @@ jobs:
         echo '    reactNativeDir = file("../../node_modules/react-native")' >> android/app/build.gradle
         echo '    codegenDir = file("../../node_modules/@react-native/codegen")' >> android/app/build.gradle
         echo '    cliFile = file("../../node_modules/@react-native-community/cli/index.js")' >> android/app/build.gradle
-        echo '    enableHermes = true' >> android/app/build.gradle
         echo '}' >> android/app/build.gradle
         echo '' >> android/app/build.gradle
         echo 'android {' >> android/app/build.gradle
         echo '    ndkVersion rootProject.ext.ndkVersion' >> android/app/build.gradle
-        echo '    compileSdkVersion rootProject.ext.compileSdkVersion' >> android/app/build.gradle
+        echo '    compileSdk rootProject.ext.compileSdkVersion' >> android/app/build.gradle
         echo '' >> android/app/build.gradle
         echo '    namespace "com.vyaktiai"' >> android/app/build.gradle
         echo '    defaultConfig {' >> android/app/build.gradle
