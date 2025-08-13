@@ -789,6 +789,22 @@ jobs:
         echo '    </style>' >> node_modules/react-native-splash-screen/android/src/main/res/values/styles.xml
         echo '</resources>' >> node_modules/react-native-splash-screen/android/src/main/res/values/styles.xml
         
+        # Create R.java file manually for splash screen library
+        mkdir -p node_modules/react-native-splash-screen/android/build/generated/source/r/debug/org/devio/rn/splashscreen
+        cat > node_modules/react-native-splash-screen/android/build/generated/source/r/debug/org/devio/rn/splashscreen/R.java << 'EOF'
+        package org.devio.rn.splashscreen;
+        
+        public final class R {
+            public static final class layout {
+                public static final int launch_screen = 0x7f0b0001;
+            }
+            public static final class style {
+                public static final int SplashScreen_SplashTheme = 0x7f100001;
+                public static final int SplashScreen_Fullscreen = 0x7f100002;
+            }
+        }
+        EOF
+        
         # Configure native dependencies for Android
         cd android && ./gradlew clean && cd ..
         
