@@ -415,12 +415,9 @@ jobs:
             echo '{"name": "VyaktiAI", "displayName": "Vyakti AI"}' > app.json
         fi
         
-        # Clear Metro cache and create bundle
-        npx react-native start --reset-cache &
-        sleep 5
-        pkill -f metro
+        # Create bundle directly without starting Metro server
         mkdir -p android/app/src/main/assets
-        npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res/
+        npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res/ --reset-cache
         
     - name: Build Full-Featured APK with All Vyakti AI Features
       run: |
@@ -435,3 +432,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: vyakti-ai-debug-apk
+        path: android/app/build/outputs/apk/debug/app-debug.apk
