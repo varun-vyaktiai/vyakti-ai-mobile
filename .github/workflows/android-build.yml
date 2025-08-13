@@ -545,6 +545,32 @@ jobs:
           sed -i '/android {/a\    namespace "com.reactnavigation.nativestack"' node_modules/@react-navigation/native-stack/android/build.gradle
         fi
         
+        # Fix React Native dependency resolution issue (conservative approach)
+        echo "Adding React Native 0.73.6 dependencies and repositories..."
+        
+        # Install missing React Native gesture handler and dependencies
+        npm install react-native-gesture-handler@2.14.0
+        
+        # Add React Native repositories without replacing existing build.gradle
+        if [ -f "android/build.gradle" ]; then
+          # Add React Native specific repositories to existing build.gradle
+          sed -i '/allprojects {/,/repositories {/,/}/ {
+            /mavenCentral()/a\
+        maven { url "https://repo1.maven.org/maven2" }\
+        maven { url "https://oss.sonatype.org/content/repositories/snapshots/" }\
+        maven { url "https://maven.fabric.io/public" }\
+        flatDir { dirs project(":react-native").projectDir.toString() + "/android" }\
+        flatDir { dirs rootProject.file("../node_modules/jsc-android/dist") }
+          }' android/build.gradle
+        fi
+        
+        # Fix app/build.gradle dependencies
+        if [ -f "android/app/build.gradle" ]; then
+          # Add React Native dependency with explicit version
+          sed -i '/dependencies {/a\    implementation "com.facebook.react:react-native:0.73.6"' android/app/build.gradle
+          sed -i '/dependencies {/a\    implementation "com.swmansion.gesturehandler:react-native-gesture-handler:2.14.0"' android/app/build.gradle
+        fi
+
         # Configure native dependencies for Android
         cd android && ./gradlew clean && cd ..
         
