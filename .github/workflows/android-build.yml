@@ -1,26 +1,25 @@
-name: Final Fixed Vyakti AI Android Build
+name: Build Android APK
 
 on:
   push:
-    branches: [main, master]
+    branches: [ main, master, develop ]
   pull_request:
-    branches: [main, master] 
+    branches: [ main, master, develop ]
   workflow_dispatch:
 
 jobs:
-  build-android:
+  build:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
-    
+
     steps:
-    - name: Checkout Repository
+    - name: Checkout Code
       uses: actions/checkout@v4
 
     - name: Setup Java 17
       uses: actions/setup-java@v4
       with:
-        java-version: '17'
         distribution: 'temurin'
+        java-version: '17'
 
     - name: Setup Node.js 18
       uses: actions/setup-node@v4
@@ -30,44 +29,33 @@ jobs:
     - name: Use System Gradle Instead of Wrapper
       run: |
         echo "=== Using System Gradle to Bypass Wrapper Issues ==="
-        
-        # Install Gradle 8.1.1 system-wide
         cd /opt
         sudo wget https://services.gradle.org/distributions/gradle-8.1.1-bin.zip
         sudo unzip gradle-8.1.1-bin.zip
         sudo ln -sf /opt/gradle-8.1.1/bin/gradle /usr/local/bin/gradle
-        
-        # Verify system gradle works
         gradle --version
-        
         echo "=== System Gradle 8.1.1 ready - bypassing wrapper completely ==="
 
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v3
+    - name: Cache Node Modules
+      uses: actions/cache@v4
       with:
-        cmdline-tools-version: 11076708
-        packages: "platform-tools platforms;android-35 build-tools;35.0.0 ndk;25.1.8937393"
-
-    - name: Install Fresh Gradle 8.1.1
-      run: |
-        wget -q https://services.gradle.org/distributions/gradle-8.1.1-bin.zip
-        unzip -q gradle-8.1.1-bin.zip
-        sudo mv gradle-8.1.1 /opt/gradle
-        export PATH="/opt/gradle/bin:$PATH"
-        echo "/opt/gradle/bin" >> $GITHUB_PATH
-        gradle --version
+        path: node_modules
+        key: ${{ runner.os }}-node-modules-${{ hashFiles('package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-node-modules-
 
     - name: Install Dependencies
-      run: npm install --legacy-peer-deps
+      run: npm install
 
-    - name: Complete Android Configuration Fix (All Issues Resolved)
+    - name: Create Android Configuration Files
       run: |
-        echo "sdk.dir=$ANDROID_HOME" > android/local.properties
+        echo "=== Creating Android Configuration Files ==="
+        mkdir -p android/app/src/main/java/com/vyaktiai/mobile
+        mkdir -p android/app/src/main/res/values
+        mkdir -p android/app/src/main/assets
         
-        # Root build.gradle - stable configuration
-        cat > android/build.gradle << 'EOF'
-        // Top-level build file where you can add configuration options common to all sub-projects/modules.
-
+        # Create root build.gradle
+        cat > android/build.gradle << 'GRADLE_ROOT_END'
         buildscript {
             ext {
                 buildToolsVersion = "35.0.0"
@@ -77,79 +65,59 @@ jobs:
                 ndkVersion = "25.1.8937393"
                 kotlinVersion = "1.8.10"
             }
-            repositories {
-                google()
-                mavenCentral()
-                maven { url "https://www.jitpack.io" }
-                maven { url "https://repo1.maven.org/maven2/" }
-            }
             dependencies {
-                classpath 'com.android.tools.build:gradle:8.1.1'
-                classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
+                classpath("com.android.tools.build:gradle:8.1.1")
+                classpath("com.facebook.react:react-native-gradle-plugin")
+                classpath("org.jetbrains.kotlin:kotlin-gradle-plugin")
             }
         }
-
+        
+        apply plugin: "com.facebook.react.rootproject"
+        
         allprojects {
             repositories {
                 google()
                 mavenCentral()
                 maven { url "https://www.jitpack.io" }
-                maven { url "https://repo1.maven.org/maven2/" }
-                maven { url "https://jitpack.io" }
-                maven { url "$rootDir/../node_modules/react-native/android" }
-                maven { url "$rootDir/../node_modules/jsc-android/dist" }
             }
         }
-        EOF
+        GRADLE_ROOT_END
         
-        # App build.gradle - complete fix with namespace resolution
-        cat > android/app/build.gradle << 'EOF'
+        # Create app build.gradle
+        cat > android/app/build.gradle << 'GRADLE_APP_END'
         apply plugin: "com.android.application"
         apply plugin: "org.jetbrains.kotlin.android"
-
-        // Import React Native modules configuration
-        apply from: file("../../node_modules/@react-native-community/cli-platform-android/native_modules.gradle")
-        applyNativeModulesAppBuildGradle(project)
-
-        import com.android.build.OutputFile
-
-        // React Native configuration
-        project.ext.react = [
-            enableHermes: false,
-            bundleInDebug: false,
-            bundleInRelease: true,
-            bundleCommand: "bundle",
-            iconWithBadge: false,
-            entryFile: "index.js"
-        ]
-
+        apply plugin: "com.facebook.react"
+        
+        react {
+            entryFile = "index.js"
+            reactNativeDir = rootProject.file("../node_modules/react-native")
+            codegenDir = rootProject.file("../node_modules/@react-native/codegen")
+            cliFile = rootProject.file("../node_modules/@react-native/cli/build/bin.js")
+            debuggableVariants = ["liveReload", "nightly", "staging"]
+        }
+        
+        def enableSeparateBuildPerCPUArchitecture = true
+        def enableProguardInReleaseBuilds = true
+        def jscFlavor = 'org.webkit:android-jsc:+'
+        
         android {
             ndkVersion rootProject.ext.ndkVersion
-            compileSdk rootProject.ext.compileSdkVersion
-
-            namespace "com.vyaktiai"
-            
-            buildFeatures {
-                buildConfig true
-            }
+            compileSdkVersion rootProject.ext.compileSdkVersion
+            namespace "com.vyaktiai.mobile"
             
             defaultConfig {
-                applicationId "com.vyaktiai"
+                applicationId "com.vyaktiai.mobile"
                 minSdkVersion rootProject.ext.minSdkVersion
-                targetSdkVersion rootProject.ext.targetSdkVersion
+                targetSdkVersion 35
                 versionCode 1
-                versionName "1.0"
-            }
-
-            splits {
-                abi {
-                    reset()
-                    enable false
-                    universalApk false
-                    include "armeabi-v7a", "x86", "arm64-v8a", "x86_64"
+                versionName "1.0.0"
+                multiDexEnabled true
+                ndk {
+                    abiFilters "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
                 }
             }
-
+            
             signingConfigs {
                 debug {
                     storeFile file('debug.keystore')
@@ -158,95 +126,93 @@ jobs:
                     keyPassword 'android'
                 }
             }
-
+            
             buildTypes {
                 debug {
                     signingConfig signingConfigs.debug
                 }
                 release {
                     signingConfig signingConfigs.debug
-                    minifyEnabled false
+                    minifyEnabled enableProguardInReleaseBuilds
                     proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
                 }
             }
-
+            
+            splits {
+                abi {
+                    reset()
+                    enable enableSeparateBuildPerCPUArchitecture
+                    universalApk false
+                    include "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
+                }
+            }
+            
             applicationVariants.all { variant ->
                 variant.outputs.each { output ->
-                    def versionCodes = ["armeabi-v7a": 1, "x86": 2, "arm64-v8a": 3, "x86_64": 4]
-                    def abi = output.getFilter(OutputFile.ABI)
+                    def versionCodes = ["armeabi-v7a": 1, "arm64-v8a": 2, "x86": 3, "x86_64": 4]
+                    def abi = output.getFilter(com.android.build.OutputFile.ABI)
                     if (abi != null) {
                         output.versionCodeOverride = defaultConfig.versionCode * 1000 + versionCodes.get(abi)
                     }
                 }
             }
-
-            packagingOptions {
-                pickFirst "lib/x86/libc++_shared.so"
-                pickFirst "lib/x86_64/libc++_shared.so"
-                pickFirst "lib/arm64-v8a/libc++_shared.so"
-                pickFirst "lib/armeabi-v7a/libc++_shared.so"
-                pickFirst "**/libc++_shared.so"
-                pickFirst "**/libjsc.so"
-            }
         }
-
-        dependencies {
-            implementation "com.facebook.react:react-native:+"
-            implementation "org.webkit:android-jsc:+"
-
-            // React Native navigation
-            implementation "androidx.appcompat:appcompat:1.6.1"
-            implementation "com.swmansion.gesturehandler.react:react-native-gesture-handler:+"
-            implementation "com.th3rdwave:react-native-safe-area-context:+"
-            implementation "com.swmansion.rnscreens:react-native-screens:+"
-            
-            // Flipper integration
-            debugImplementation("com.facebook.flipper:flipper:+") {
-                exclude group:"com.facebook.fbjni"
-            }
-            debugImplementation("com.facebook.flipper:flipper-network-plugin:+") {
-                exclude group:"com.facebook.flipper"
-                exclude group:"com.squareup.okhttp3", module:"okhttp"
-            }
-        }
-
-        // REMOVED: apply from: file("../../node_modules/react-native/react.gradle")
-        // This file doesn't exist in React Native 0.73.6 - Issue resolved
-        EOF
         
-        # Settings.gradle - clean configuration
-        cat > android/settings.gradle << 'EOF'
+        dependencies {
+            implementation fileTree(dir: "libs", include: ["*.jar"])
+            implementation("com.facebook.react:react-android")
+            implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.0.0")
+            implementation 'androidx.multidex:multidex:2.0.1'
+            debugImplementation("com.facebook.flipper:flipper:0.125.0")
+            debugImplementation("com.facebook.flipper:flipper-network-plugin:0.125.0") {
+                exclude group:'com.squareup.okhttp3', module:'okhttp'
+            }
+            debugImplementation("com.facebook.flipper:flipper-fresco-plugin:0.125.0")
+            if (hermesEnabled.toBoolean()) {
+                implementation("com.facebook.react:hermes-android")
+            } else {
+                implementation jscFlavor
+            }
+        }
+        
+        apply from: file("../../node_modules/@react-native-community/cli-platform-android/native_modules.gradle"); applyNativeModulesAppBuildGradle(project)
+        GRADLE_APP_END
+        
+        # Create settings.gradle
+        cat > android/settings.gradle << 'GRADLE_SETTINGS_END'
         rootProject.name = 'VyaktiAI'
         include ':app'
-
         apply from: file("../node_modules/@react-native-community/cli-platform-android/native_modules.gradle")
         applyNativeModulesSettingsGradle(settings)
-        EOF
+        GRADLE_SETTINGS_END
         
-        # Optimized gradle.properties
-        cat > android/gradle.properties << 'EOF'
+        # Create gradle.properties
+        cat > android/gradle.properties << 'GRADLE_PROPS_END'
         org.gradle.jvmargs=-Xmx4096m -XX:+UseG1GC
         android.useAndroidX=true
         android.enableJetifier=true
         FLIPPER_VERSION=0.125.0
-        
-        # React Native optimization
         newArchEnabled=false
         hermesEnabled=false
-        
-        # Build optimization
         org.gradle.parallel=true
         org.gradle.configureondemand=true
         org.gradle.daemon=true
         org.gradle.caching=true
-        EOF
+        GRADLE_PROPS_END
 
-    - name: Fix React Native Library Namespace and BuildConfig Issues
+    - name: Fix React Native Library Issues
       run: |
-        echo "=== Fixing React Native Library Namespace and BuildConfig Issues ==="
+        echo "=== Fixing React Native Library Issues ==="
         
-        # Define libraries with their namespaces
-        declare -A RN_LIBRARIES=(
+        # Fix react-native-audio-recorder-player classpath issue
+        if [ -f "node_modules/react-native-audio-recorder-player/android/build.gradle" ]; then
+          sed -i '/classpath.*project(/d' node_modules/react-native-audio-recorder-player/android/build.gradle
+          sed -i '/classpath.*":ReactAndroid"/d' node_modules/react-native-audio-recorder-player/android/build.gradle
+          echo "Fixed react-native-audio-recorder-player classpath dependencies"
+        fi
+        
+        # Define libraries to fix
+        declare -A libraries=(
           ["react-native-sound"]="com.zmxv.RNSound"
           ["react-native-vector-icons"]="com.oblador.vectoricons"
           ["react-native-tts"]="net.no_mad.tts"
@@ -259,12 +225,12 @@ jobs:
         )
         
         # Fix each library
-        for lib in "${!RN_LIBRARIES[@]}"; do
-          namespace="${RN_LIBRARIES[$lib]}"
+        for lib in "${!libraries[@]}"; do
+          namespace="${libraries[$lib]}"
           gradle_file="node_modules/$lib/android/build.gradle"
           
           if [ -f "$gradle_file" ]; then
-            echo "Fixing $lib: namespace + buildConfig + dependency resolution..."
+            echo "Fixing $lib..."
             
             # Add namespace if missing
             if ! grep -q "namespace" "$gradle_file"; then
@@ -276,318 +242,101 @@ jobs:
               sed -i '/namespace/a\    buildFeatures {\n        buildConfig true\n    }' "$gradle_file"
             fi
             
-            # CRITICAL: Fix React Native dependency resolution
-            # Remove ALL React Native dependency declarations - let auto-linking handle it
+            # Remove React Native dependencies - let auto-linking handle them
             sed -i '/implementation.*com\.facebook\.react:react-native/d' "$gradle_file"
             sed -i '/implementation.*"com\.facebook\.react:react-native/d' "$gradle_file"
             sed -i '/api.*com\.facebook\.react:react-native/d' "$gradle_file"
-            sed -i '/api.*"com\.facebook\.react:react-native/d' "$gradle_file"
             sed -i '/compileOnly.*com\.facebook\.react:react-native/d' "$gradle_file"
-            sed -i '/compileOnly.*"com\.facebook\.react:react-native/d' "$gradle_file"
             
-            # Also remove any version-pinned dependencies
-            sed -i '/implementation.*com\.facebook\.react:react-native:.*$/d' "$gradle_file"
-            sed -i '/implementation.*"com\.facebook\.react:react-native:.*"$/d' "$gradle_file"
-            sed -i '/api.*com\.facebook\.react:react-native:.*$/d' "$gradle_file"
-            sed -i '/api.*"com\.facebook\.react:react-native:.*"$/d' "$gradle_file"
-            
-            # Critical: Replace with project dependency to local React Native 
-            if ! grep -q "project.*ReactAndroid" "$gradle_file" && ! grep -q "React Native from main app" "$gradle_file"; then
-              sed -i '/dependencies {/a\    // React Native from main app via auto-linking\n    implementation project(path: ":ReactAndroid")' "$gradle_file"
-            fi
-            
-            echo "Fixed React Native dependencies in $lib - using project reference"
-          fi
-        done
-        
-        echo "=== All React Native library namespace and buildConfig issues fixed ==="
-        
-        # CRITICAL FIX: Replace problematic buildscript classpath dependencies
-        echo "=== Fixing Gradle Script Classpath Issues ==="
-        
-        # Fix react-native-audio-recorder-player classpath issue specifically 
-        audio_gradle="node_modules/react-native-audio-recorder-player/android/build.gradle"
-        if [ -f "$audio_gradle" ]; then
-          echo "Fixing react-native-audio-recorder-player classpath dependencies..."
-          
-          # Replace entire buildscript block to remove project dependencies
-          cat > temp_audio_buildscript.txt << 'BUILDSCRIPT_END'
-buildscript {
-    repositories {
-        google()
-        mavenCentral()
-    }
-    dependencies {
-        classpath 'com.android.tools.build:gradle:8.1.1'
-        // Removed project classpath dependency - using auto-linking instead
-    }
-}
-BUILDSCRIPT_END
-          
-          # Replace buildscript block if it contains project dependencies
-          if grep -q "classpath.*project(" "$audio_gradle"; then
-            # Extract everything except buildscript block
-            sed -i '/^buildscript {/,/^}/d' "$audio_gradle"
-            # Prepend new buildscript block
-            cat temp_audio_buildscript.txt "$audio_gradle" > temp_merged.gradle
-            mv temp_merged.gradle "$audio_gradle"
-            echo "Replaced buildscript block in react-native-audio-recorder-player"
-          fi
-          
-          rm -f temp_audio_buildscript.txt
-        fi
-        
-        # Apply comprehensive classpath fixes to all React Native libraries
-        for lib in "${!RN_LIBRARIES[@]}"; do
-          gradle_file="node_modules/$lib/android/build.gradle"
-          if [ -f "$gradle_file" ]; then
-            echo "Checking classpath dependencies in $lib..."
-            
-            # Remove any problematic classpath lines entirely
+            # Remove classpath project dependencies
             sed -i '/classpath.*project(/d' "$gradle_file"
             sed -i '/classpath.*":ReactAndroid"/d' "$gradle_file"
-            sed -i '/classpath.*rootProject/d' "$gradle_file"
             
-            # Replace with safe alternatives if buildscript exists
-            if grep -q "buildscript" "$gradle_file" && grep -q "classpath.*com\.facebook\.react" "$gradle_file"; then
-              sed -i 's/classpath.*com\.facebook\.react.*/classpath "com.facebook.react:react-native-gradle-plugin"/g' "$gradle_file"
-            fi
-            
-            echo "Fixed classpath issues in $lib"
+            echo "Fixed $lib"
           fi
         done
-        
-        echo "=== All Gradle script classpath issues fixed ==="
 
-    - name: Ensure React Native Project Configuration
+    - name: Add ReactAndroid Project
       run: |
-        echo "=== Ensuring React Native Project Configuration ==="
-        
-        # Ensure settings.gradle includes React Native project properly
-        if [ -f android/settings.gradle ]; then
-          echo "Checking settings.gradle for React Native inclusion..."
-          
-          # Add React Native if not present
-          if ! grep -q "include.*ReactAndroid" android/settings.gradle; then
-            echo "include ':ReactAndroid'" >> android/settings.gradle
-            echo "project(':ReactAndroid').projectDir = new File(rootProject.projectDir, '../node_modules/react-native/ReactAndroid')" >> android/settings.gradle
-          fi
-          
-          echo "Current settings.gradle content:"
-          cat android/settings.gradle
+        echo "=== Adding ReactAndroid Project ==="
+        if ! grep -q "include.*ReactAndroid" android/settings.gradle; then
+          echo "include ':ReactAndroid'" >> android/settings.gradle
+          echo "project(':ReactAndroid').projectDir = new File(rootProject.projectDir, '../node_modules/react-native/ReactAndroid')" >> android/settings.gradle
         fi
-        
-        echo "=== React Native project configuration complete ==="
 
-    - name: Fix Gradle Deprecation Warnings and Compatibility
+    - name: Clear Gradle Caches
       run: |
-        echo "=== Fixing Gradle Deprecation Warnings ==="
-        
-        # Update gradle.properties to suppress deprecation warnings and improve compatibility
-        cat >> android/gradle.properties << 'EOF'
-        
-        # Gradle 8.x compatibility settings to prevent log truncation
-        org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m
-        org.gradle.parallel=true
-        org.gradle.daemon=true
-        org.gradle.configureondemand=false
-        
-        # Suppress deprecation warnings that cause log truncation
-        org.gradle.warning.mode=none
-        
-        # React Native specific settings for Gradle 8.x
-        android.enableJetifier=true
-        android.useAndroidX=true
-        
-        # Enable Gradle build cache
-        org.gradle.caching=true
-        EOF
-        
-        echo "=== Gradle configuration optimized to prevent truncation ==="
-
-    - name: Fix React Native Dependency Resolution
-      run: |
-        echo "=== Fixing React Native Dependency Resolution ==="
-        
-        # Remove any manual dependency declarations that conflict with auto-linking
-        # Check if app/build.gradle has manual RN dependencies and remove them
-        if [ -f android/app/build.gradle ]; then
-          echo "Removing manual React Native dependencies from app/build.gradle..."
-          
-          # Remove lines with manual RN dependencies that should be auto-linked
-          sed -i '/implementation.*react-native-/d' android/app/build.gradle
-          sed -i '/implementation.*com\.facebook\.react/d' android/app/build.gradle
-          sed -i '/implementation.*com\.swmansion/d' android/app/build.gradle
-          sed -i '/implementation.*com\.th3rdwave/d' android/app/build.gradle
-          
-          echo "Manual dependencies removed, relying on auto-linking..."
-        fi
-        
-        # Clean gradle caches to force fresh dependency resolution
-        rm -rf ~/.gradle/caches/modules-2/files-2.1/com.facebook.react
-        rm -rf ~/.gradle/caches/modules-2/files-2.1/com.swmansion*
-        rm -rf ~/.gradle/caches/modules-2/files-2.1/com.th3rdwave*
-        
-        echo "=== React Native dependency resolution fixed ==="
-
-    - name: Clear All Gradle Caches and Force Fresh Build
-      run: |
-        echo "=== Clearing All Gradle Caches for Fresh Dependency Resolution ==="
-        
-        # Clear all possible Gradle cache locations
+        echo "=== Clearing Gradle Caches ==="
         rm -rf ~/.gradle/caches/
         rm -rf ~/.gradle/wrapper/
-        rm -rf android/.gradle/
-        rm -rf android/app/.gradle/
-        rm -rf android/build/
-        rm -rf android/app/build/
-        
-        # Clear specific React Native cache locations
-        rm -rf ~/.gradle/caches/modules-2/files-2.1/com.facebook.react
-        rm -rf ~/.gradle/caches/transforms-3/
-        rm -rf node_modules/react-native/ReactAndroid/.gradle/
-        
-        # Stop any gradle daemons using system gradle
+        rm -rf ~/.gradle/daemon/
         gradle --stop || echo "Gradle daemon not running"
-        
-        echo "=== All caches cleared, ready for fresh build ==="
 
-    - name: Verify Auto-linking Configuration
+    - name: Generate Debug Keystore
       run: |
-        echo "=== Verifying React Native Auto-linking Configuration ==="
-        
-        # Ensure react-native.config.js allows auto-linking (if it exists)
-        if [ -f react-native.config.js ]; then
-          echo "Found react-native.config.js - checking auto-linking config..."
-          cat react-native.config.js
-        fi
-        
-        # Ensure MainApplication.java doesn't have manual package imports
-        if [ -f android/app/src/main/java/com/vyaktiai/MainApplication.java ]; then
-          echo "Checking MainApplication.java for manual package imports..."
-          # Remove any manual ReactPackage imports that conflict with auto-linking
-          sed -i '/import.*react.native.*Package;/d' android/app/src/main/java/com/vyaktiai/MainApplication.java
-          sed -i '/new.*Package()/d' android/app/src/main/java/com/vyaktiai/MainApplication.java
-        fi
-        
-        # Verify node_modules native dependencies exist
-        echo "Verifying React Native libraries in node_modules:"
-        ls -la node_modules/react-native-*/android/build.gradle 2>/dev/null || echo "Auto-linked libraries detected"
-        
-        echo "=== Auto-linking verification complete ==="
-
-    - name: Create Debug Keystore
-      working-directory: android/app
-      run: |
-        if [ ! -f debug.keystore ]; then
-          keytool -genkeypair -v -keystore debug.keystore -alias androiddebugkey \
+        cd android/app
+        if [ ! -f "debug.keystore" ]; then
+          keytool -genkey -v -keystore debug.keystore -alias androiddebugkey \
             -keyalg RSA -keysize 2048 -validity 10000 \
             -storepass android -keypass android \
             -dname "CN=Android Debug,O=Android,C=US"
         fi
 
-    - name: Test Complete Fixed Configuration
+    - name: Test Configuration
       working-directory: android
       run: |
-        echo "=== Testing Complete Fixed Configuration ==="
+        echo "=== Testing Configuration ==="
         gradle projects --no-daemon --warning-mode=none
 
-    - name: Clean Build Directory
+    - name: Clean Build
+      working-directory: android
+      run: gradle clean --no-daemon --warning-mode=none
+
+    - name: Build Debug APK
       working-directory: android
       run: |
-        gradle clean --no-daemon --warning-mode=none
+        echo "Building Debug APK..."
+        gradle :app:assembleDebug --no-daemon --warning-mode=none --console=plain --max-workers=1
 
-    - name: Build Debug APK (Final Success)
+    - name: Build Release APK
       working-directory: android
       run: |
-        echo "Building Debug APK with all fixes applied..."
-        gradle :app:assembleDebug \
-          --no-daemon \
-          --warning-mode=none \
-          --console=plain \
-          --max-workers=1
+        echo "Building Release APK..."
+        gradle :app:assembleRelease --no-daemon --warning-mode=none --console=plain --max-workers=1
 
-    - name: Build Release APK (Final Success)
+    - name: Build Release AAB
       working-directory: android
       run: |
-        echo "Building Release APK with all fixes applied..."
-        gradle :app:assembleRelease \
-          --no-daemon \
-          --warning-mode=none \
-          --console=plain \
-          --max-workers=1
-
-    - name: Build Release AAB (Final Success)
-      working-directory: android
-      run: |
-        echo "Building Release AAB for Google Play Store..."
-        gradle :app:bundleRelease \
-          --no-daemon \
-          --warning-mode=none \
-          --console=plain \
-          --max-workers=1
-
-    - name: Verify Final Complete Build Success
-      run: |
-        echo "ULTIMATE SUCCESS: Final Vyakti AI Android build complete!"
-        echo "React Native: $(grep '\"react-native\":' package.json | cut -d'"' -f4)"
-        echo "Navigation packages: $(grep -c '@react-navigation' package.json)"
-        echo "Voice/Audio packages: $(grep -c -E 'voice|audio|tts|sound' package.json)"
-        echo "Device packages: $(grep -c -E 'device-info|permissions|async-storage' package.json)"
-        
-        echo "Build outputs:"
-        find android/app/build/outputs -name "*.apk" -o -name "*.aab" | while read file; do
-          echo "   $(basename "$file") - $(du -h "$file" | cut -f1)"
-        done
+        echo "Building Release AAB..."
+        gradle :app:bundleRelease --no-daemon --warning-mode=none --console=plain --max-workers=1
 
     - name: Upload Debug APK
       uses: actions/upload-artifact@v4
+      if: success()
       with:
-        name: vyakti-ai-debug-final-fixed
+        name: vyakti-ai-debug-apk
         path: android/app/build/outputs/apk/debug/*.apk
 
     - name: Upload Release APK
       uses: actions/upload-artifact@v4
+      if: success()
       with:
-        name: vyakti-ai-release-final-fixed
+        name: vyakti-ai-release-apk
         path: android/app/build/outputs/apk/release/*.apk
 
-    - name: Upload Release AAB (Google Play Store Ready)
+    - name: Upload Release AAB
       uses: actions/upload-artifact@v4
+      if: success()
       with:
-        name: vyakti-ai-playstore-final-fixed
+        name: vyakti-ai-release-aab
         path: android/app/build/outputs/bundle/release/*.aab
 
-    - name: Final Success Summary (All Issues Resolved)
+    - name: Build Summary
+      if: always()
       run: |
-        echo "COMPLETE SUCCESS: All Android build issues permanently resolved!"
-        echo ""
-        echo "ALL FIXES SUCCESSFULLY APPLIED:"
-        echo "✅ Removed non-existent react.gradle import (React Native 0.73.6 compatibility)"
-        echo "✅ Fixed React Native library namespace issues (AGP 8.1.1 compatibility)"
-        echo "✅ Complete app build.gradle rewrite without problematic dependencies"
-        echo "✅ Fresh Gradle 8.1.1 installation bypassing wrapper corruption"
-        echo "✅ All repositories configured for proper dependency resolution"
-        echo "✅ Fixed all React Native package namespace requirements:"
-        echo "    • react-native-sound → com.zmxv.RNSound"
-        echo "    • react-native-vector-icons → com.oblador.vectoricons"  
-        echo "    • react-native-tts → net.no_mad.tts"
-        echo "    • react-native-audio-recorder-player → com.dooboolab.audiorecorderplayer"
-        echo "    • react-native-device-info → com.learnium.RNDeviceInfo"
-        echo "    • react-native-permissions → com.zoontek.rnpermissions"
-        echo "    • @react-native-voice/voice → com.wenkesj.voice"
-        echo "    • react-native-webview → com.reactnativecommunity.webview"
-        echo "    • react-native-splash-screen → org.devio.rn.splashscreen"
-        echo ""
-        echo "VYAKTI AI FEATURES 100% PRESERVED:"
-        echo "- All 10 avatars: Derek, Kavya, Amit Sir, Priya, and 6 others ✅"
-        echo "- Complete multilingual support: Hindi, English, Tamil, Bengali ✅"
-        echo "- Full voice feature set: Voice scoring, TTS, speech recognition ✅"
-        echo "- React Native 0.73.6 with all performance optimizations intact ✅"
-        echo "- Navigation system, device integration, all packages working ✅"
-        echo ""
-        echo "FINAL RESULT: Production-ready APK and AAB for Google Play Store deployment!"
-        echo "This workflow definitively eliminates ALL build errors permanently."
-        echo "No more circular dependencies, missing files, or namespace issues."
-        echo ""
-        echo "🚀 Vyakti AI mobile app is now ready for Google Play Store submission! 🚀"
+        echo "=== Build Summary ==="
+        echo "All React Native library fixes applied"
+        echo "Built artifacts:"
+        ls -la android/app/build/outputs/apk/debug/ || echo "Debug APK not found"
+        ls -la android/app/build/outputs/apk/release/ || echo "Release APK not found"
+        ls -la android/app/build/outputs/bundle/release/ || echo "Release AAB not found"
