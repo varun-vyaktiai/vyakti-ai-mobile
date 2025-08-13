@@ -552,16 +552,14 @@ jobs:
         # Fix React Native dependency resolution for 0.73.6
         echo "Fixing React Native 0.73.6 dependency resolution..."
         
-        # The issue is that React Native 0.73.6 uses react-android artifact, not react-native
         # Add dependency resolution rules to app/build.gradle
         if [ -f "android/app/build.gradle" ]; then
-          echo "
-configurations.all {
-    resolutionStrategy {
-        force 'com.facebook.react:react-android:0.73.6'
-        force 'com.facebook.react:react-native:0.73.6'
-    }
-}" >> android/app/build.gradle
+          echo "configurations.all {" >> android/app/build.gradle
+          echo "    resolutionStrategy {" >> android/app/build.gradle
+          echo "        force 'com.facebook.react:react-android:0.73.6'" >> android/app/build.gradle
+          echo "        force 'com.facebook.react:react-native:0.73.6'" >> android/app/build.gradle
+          echo "    }" >> android/app/build.gradle
+          echo "}" >> android/app/build.gradle
         fi
 
         # Configure native dependencies for Android
