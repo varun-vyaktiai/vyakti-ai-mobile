@@ -236,9 +236,21 @@ jobs:
         # Suppress compileSdk warning
         echo "android.suppressUnsupportedCompileSdk=35" >> android/gradle.properties
         
-        # Add React Native repository to all library build.gradle files
-        find node_modules -name "build.gradle" -path "*/react-native-*/android/build.gradle" -exec sed -i '/repositories {/a\        maven {\n            url "https://www.jitpack.io"\n        }\n        maven {\n            url("$rootDir/../node_modules/react-native/android")\n        }' {} \;
-        find node_modules -name "build.gradle" -path "*/@react-native*/android/build.gradle" -exec sed -i '/repositories {/a\        maven {\n            url "https://www.jitpack.io"\n        }\n        maven {\n            url("$rootDir/../node_modules/react-native/android")\n        }' {} \;
+        # Include React Native as a local project in settings.gradle
+        echo "" >> android/settings.gradle
+        echo "include ':ReactAndroid'" >> android/settings.gradle
+        echo "project(':ReactAndroid').projectDir = new File(rootProject.projectDir, '../node_modules/react-native/ReactAndroid')" >> android/settings.gradle
+        
+        # Add React Native to main build.gradle repositories
+        sed -i '/allprojects {/,/repositories {/,/}/ {
+            /}$/i\
+        maven {\
+            url("$rootDir/../node_modules/react-native/android")\
+        }\
+        maven {\
+            url("$rootDir/../node_modules/jsc-android/dist")\
+        }
+        }' android/build.gradle
 
         # Create debug keystore
         keytool -genkey -v -keystore android/app/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
