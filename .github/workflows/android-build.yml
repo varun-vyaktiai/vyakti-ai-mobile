@@ -724,7 +724,7 @@ jobs:
         echo '    <string name="app_name">Vyakti AI</string>' >> android/app/src/main/res/values/strings.xml
         echo '</resources>' >> android/app/src/main/res/values/strings.xml
         
-        # Create styles.xml for themes
+        # Create styles.xml for themes including splash screen styles
         echo '<?xml version="1.0" encoding="utf-8"?>' > android/app/src/main/res/values/styles.xml
         echo '<resources>' >> android/app/src/main/res/values/styles.xml
         echo '    <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">' >> android/app/src/main/res/values/styles.xml
@@ -733,7 +733,36 @@ jobs:
         echo '    <style name="LaunchTheme" parent="AppTheme">' >> android/app/src/main/res/values/styles.xml
         echo '        <item name="android:windowBackground">@android:color/white</item>' >> android/app/src/main/res/values/styles.xml
         echo '    </style>' >> android/app/src/main/res/values/styles.xml
+        echo '    <style name="SplashScreen_SplashTheme" parent="Theme.AppCompat.Light.NoActionBar">' >> android/app/src/main/res/values/styles.xml
+        echo '        <item name="android:windowBackground">@android:color/white</item>' >> android/app/src/main/res/values/styles.xml
+        echo '        <item name="android:windowNoTitle">true</item>' >> android/app/src/main/res/values/styles.xml
+        echo '        <item name="android:windowActionBar">false</item>' >> android/app/src/main/res/values/styles.xml
+        echo '        <item name="android:windowFullscreen">false</item>' >> android/app/src/main/res/values/styles.xml
+        echo '        <item name="android:windowContentOverlay">@null</item>' >> android/app/src/main/res/values/styles.xml
+        echo '    </style>' >> android/app/src/main/res/values/styles.xml
+        echo '    <style name="SplashScreen_Fullscreen" parent="Theme.AppCompat.Light.NoActionBar">' >> android/app/src/main/res/values/styles.xml
+        echo '        <item name="android:windowBackground">@android:color/white</item>' >> android/app/src/main/res/values/styles.xml
+        echo '        <item name="android:windowNoTitle">true</item>' >> android/app/src/main/res/values/styles.xml
+        echo '        <item name="android:windowActionBar">false</item>' >> android/app/src/main/res/values/styles.xml
+        echo '        <item name="android:windowFullscreen">true</item>' >> android/app/src/main/res/values/styles.xml
+        echo '        <item name="android:windowContentOverlay">@null</item>' >> android/app/src/main/res/values/styles.xml
+        echo '    </style>' >> android/app/src/main/res/values/styles.xml
         echo '</resources>' >> android/app/src/main/res/values/styles.xml
+        
+        # Create launch_screen.xml layout for splash screen
+        mkdir -p android/app/src/main/res/layout
+        echo '<?xml version="1.0" encoding="utf-8"?>' > android/app/src/main/res/layout/launch_screen.xml
+        echo '<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"' >> android/app/src/main/res/layout/launch_screen.xml
+        echo '    android:layout_width="match_parent"' >> android/app/src/main/res/layout/launch_screen.xml
+        echo '    android:layout_height="match_parent"' >> android/app/src/main/res/layout/launch_screen.xml
+        echo '    android:background="@android:color/white"' >> android/app/src/main/res/layout/launch_screen.xml
+        echo '    android:orientation="vertical"' >> android/app/src/main/res/layout/launch_screen.xml
+        echo '    android:gravity="center">' >> android/app/src/main/res/layout/launch_screen.xml
+        echo '    <ImageView' >> android/app/src/main/res/layout/launch_screen.xml
+        echo '        android:layout_width="100dp"' >> android/app/src/main/res/layout/launch_screen.xml
+        echo '        android:layout_height="100dp"' >> android/app/src/main/res/layout/launch_screen.xml
+        echo '        android:src="@mipmap/ic_launcher" />' >> android/app/src/main/res/layout/launch_screen.xml
+        echo '</LinearLayout>' >> android/app/src/main/res/layout/launch_screen.xml
         
         # Configure native dependencies for Android
         cd android && ./gradlew clean && cd ..
