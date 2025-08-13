@@ -236,13 +236,14 @@ jobs:
         # Suppress compileSdk warning
         echo "android.suppressUnsupportedCompileSdk=35" >> android/gradle.properties
         
-        # Copy React Native prebuilt AAR to a local repository
-        mkdir -p android/libs
-        find node_modules/react-native/android -name "*.aar" -exec cp {} android/libs/ \;
+        # Create a simplified React Native resolution approach
+        # Add React Native dependency resolution to all library build.gradle files
+        find node_modules -name "build.gradle" -path "*/react-native-*/android/build.gradle" -exec sed -i '/dependencies {/,/^}/ { /implementation.*react-native/d; }' {} \;
+        find node_modules -name "build.gradle" -path "*/@react-native*/android/build.gradle" -exec sed -i '/dependencies {/,/^}/ { /implementation.*react-native/d; }' {} \;
         
-        # Add React Native dependencies to all library build.gradle files
-        find node_modules -name "build.gradle" -path "*/react-native-*/android/build.gradle" -exec sed -i '/dependencies {/a\    implementation files("$rootDir/libs/react-native-0.73.6-release.aar")' {} \;
-        find node_modules -name "build.gradle" -path "*/@react-native*/android/build.gradle" -exec sed -i '/dependencies {/a\    implementation files("$rootDir/libs/react-native-0.73.6-release.aar")' {} \;
+        # Remove any existing React Native dependency references that cause conflicts
+        find node_modules -name "build.gradle" -path "*/react-native-*/android/build.gradle" -exec sed -i 's/implementation.*react-native.*//g' {} \;
+        find node_modules -name "build.gradle" -path "*/@react-native*/android/build.gradle" -exec sed -i 's/implementation.*react-native.*//g' {} \;
         
         # Add repositories with React Native path
         sed -i '/repositories {/a\        maven { url("$rootDir/../node_modules/react-native/android") }' android/build.gradle
