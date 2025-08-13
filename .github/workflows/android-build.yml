@@ -311,7 +311,7 @@ jobs:
           echo "Fixing react-native-audio-recorder-player classpath dependencies..."
           
           # Replace entire buildscript block to remove project dependencies
-          cat > temp_audio_buildscript.txt << 'EOF'
+          cat > temp_audio_buildscript.txt << 'BUILDSCRIPT_END'
 buildscript {
     repositories {
         google()
@@ -322,7 +322,7 @@ buildscript {
         // Removed project classpath dependency - using auto-linking instead
     }
 }
-EOF
+BUILDSCRIPT_END
           
           # Replace buildscript block if it contains project dependencies
           if grep -q "classpath.*project(" "$audio_gradle"; then
