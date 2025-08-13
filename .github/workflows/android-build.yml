@@ -301,6 +301,32 @@ jobs:
         done
         
         echo "=== All React Native library namespace and buildConfig issues fixed ==="
+        
+        # CRITICAL FIX: Remove project dependencies from script classpath
+        echo "=== Fixing Gradle Script Classpath Issues ==="
+        
+        # Fix react-native-audio-recorder-player classpath issue specifically
+        audio_gradle="node_modules/react-native-audio-recorder-player/android/build.gradle"
+        if [ -f "$audio_gradle" ]; then
+          echo "Fixing react-native-audio-recorder-player classpath dependencies..."
+          # Remove any project dependencies from script classpath
+          sed -i '/classpath.*project(/d' "$audio_gradle"
+          sed -i '/classpath.*":ReactAndroid"/d' "$audio_gradle"
+          sed -i 's/classpath project.*$/\/\/ Removed project classpath dependency/g' "$audio_gradle"
+          echo "Fixed classpath issue in react-native-audio-recorder-player"
+        fi
+        
+        # Apply same fix to all other libraries that might have this issue
+        for lib in "${!RN_LIBRARIES[@]}"; do
+          gradle_file="node_modules/$lib/android/build.gradle"
+          if [ -f "$gradle_file" ]; then
+            # Remove project classpath dependencies that cause script classpath errors
+            sed -i '/classpath.*project(/d' "$gradle_file"
+            sed -i '/classpath.*":ReactAndroid"/d' "$gradle_file"
+          fi
+        done
+        
+        echo "=== All Gradle script classpath issues fixed ==="
 
     - name: Ensure React Native Project Configuration
       run: |
