@@ -792,11 +792,12 @@ jobs:
         </resources>
         EOF
         
-        # Modify splash screen build.gradle to disable resource generation that conflicts
+        # Modify splash screen build.gradle to include proper namespace
         cat > node_modules/react-native-splash-screen/android/build.gradle << 'EOF'
         apply plugin: 'com.android.library'
         
         android {
+            namespace "org.devio.rn.splashscreen"
             compileSdkVersion 33
             buildToolsVersion "33.0.1"
             
@@ -828,6 +829,13 @@ jobs:
         dependencies {
             implementation 'com.facebook.react:react-native:+'
         }
+        EOF
+        
+        # Create proper AndroidManifest.xml for splash screen library
+        mkdir -p node_modules/react-native-splash-screen/android/src/main
+        cat > node_modules/react-native-splash-screen/android/src/main/AndroidManifest.xml << 'EOF'
+        <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+        </manifest>
         EOF
         
         # Configure native dependencies for Android
