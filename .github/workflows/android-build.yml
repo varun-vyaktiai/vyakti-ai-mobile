@@ -733,36 +733,10 @@ jobs:
         echo '    <style name="LaunchTheme" parent="AppTheme">' >> android/app/src/main/res/values/styles.xml
         echo '        <item name="android:windowBackground">@android:color/white</item>' >> android/app/src/main/res/values/styles.xml
         echo '    </style>' >> android/app/src/main/res/values/styles.xml
-        echo '    <style name="SplashScreen_SplashTheme" parent="Theme.AppCompat.Light.NoActionBar">' >> android/app/src/main/res/values/styles.xml
-        echo '        <item name="android:windowBackground">@android:color/white</item>' >> android/app/src/main/res/values/styles.xml
-        echo '        <item name="android:windowNoTitle">true</item>' >> android/app/src/main/res/values/styles.xml
-        echo '        <item name="android:windowActionBar">false</item>' >> android/app/src/main/res/values/styles.xml
-        echo '        <item name="android:windowFullscreen">false</item>' >> android/app/src/main/res/values/styles.xml
-        echo '        <item name="android:windowContentOverlay">@null</item>' >> android/app/src/main/res/values/styles.xml
-        echo '    </style>' >> android/app/src/main/res/values/styles.xml
-        echo '    <style name="SplashScreen_Fullscreen" parent="Theme.AppCompat.Light.NoActionBar">' >> android/app/src/main/res/values/styles.xml
-        echo '        <item name="android:windowBackground">@android:color/white</item>' >> android/app/src/main/res/values/styles.xml
-        echo '        <item name="android:windowNoTitle">true</item>' >> android/app/src/main/res/values/styles.xml
-        echo '        <item name="android:windowActionBar">false</item>' >> android/app/src/main/res/values/styles.xml
-        echo '        <item name="android:windowFullscreen">true</item>' >> android/app/src/main/res/values/styles.xml
-        echo '        <item name="android:windowContentOverlay">@null</item>' >> android/app/src/main/res/values/styles.xml
-        echo '    </style>' >> android/app/src/main/res/values/styles.xml
+
         echo '</resources>' >> android/app/src/main/res/values/styles.xml
         
-        # Create launch_screen.xml layout for splash screen
-        mkdir -p android/app/src/main/res/layout
-        echo '<?xml version="1.0" encoding="utf-8"?>' > android/app/src/main/res/layout/launch_screen.xml
-        echo '<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"' >> android/app/src/main/res/layout/launch_screen.xml
-        echo '    android:layout_width="match_parent"' >> android/app/src/main/res/layout/launch_screen.xml
-        echo '    android:layout_height="match_parent"' >> android/app/src/main/res/layout/launch_screen.xml
-        echo '    android:background="@android:color/white"' >> android/app/src/main/res/layout/launch_screen.xml
-        echo '    android:orientation="vertical"' >> android/app/src/main/res/layout/launch_screen.xml
-        echo '    android:gravity="center">' >> android/app/src/main/res/layout/launch_screen.xml
-        echo '    <ImageView' >> android/app/src/main/res/layout/launch_screen.xml
-        echo '        android:layout_width="100dp"' >> android/app/src/main/res/layout/launch_screen.xml
-        echo '        android:layout_height="100dp"' >> android/app/src/main/res/layout/launch_screen.xml
-        echo '        android:src="@mipmap/ic_launcher" />' >> android/app/src/main/res/layout/launch_screen.xml
-        echo '</LinearLayout>' >> android/app/src/main/res/layout/launch_screen.xml
+
         
         # Create missing drawable for rn_edit_text_material
         mkdir -p android/app/src/main/res/drawable
@@ -781,6 +755,11 @@ jobs:
         echo '        </shape>' >> android/app/src/main/res/drawable/rn_edit_text_material.xml
         echo '    </item>' >> android/app/src/main/res/drawable/rn_edit_text_material.xml
         echo '</selector>' >> android/app/src/main/res/drawable/rn_edit_text_material.xml
+        
+        # Remove any existing conflicting resources first
+        rm -rf node_modules/react-native-splash-screen/android/src/main/res/layout/launch_screen.xml
+        rm -rf node_modules/react-native-splash-screen/android/src/main/res/values/refs.xml
+        rm -rf node_modules/react-native-splash-screen/android/src/main/res/values/styles.xml
         
         # Create splash screen resources in react-native-splash-screen library
         mkdir -p node_modules/react-native-splash-screen/android/src/main/res/layout
