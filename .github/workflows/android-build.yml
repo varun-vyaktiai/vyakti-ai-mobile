@@ -764,6 +764,24 @@ jobs:
         echo '        android:src="@mipmap/ic_launcher" />' >> android/app/src/main/res/layout/launch_screen.xml
         echo '</LinearLayout>' >> android/app/src/main/res/layout/launch_screen.xml
         
+        # Create missing drawable for rn_edit_text_material
+        mkdir -p android/app/src/main/res/drawable
+        echo '<?xml version="1.0" encoding="utf-8"?>' > android/app/src/main/res/drawable/rn_edit_text_material.xml
+        echo '<selector xmlns:android="http://schemas.android.com/apk/res/android">' >> android/app/src/main/res/drawable/rn_edit_text_material.xml
+        echo '    <item android:state_enabled="false">' >> android/app/src/main/res/drawable/rn_edit_text_material.xml
+        echo '        <shape android:shape="rectangle">' >> android/app/src/main/res/drawable/rn_edit_text_material.xml
+        echo '            <solid android:color="@android:color/transparent" />' >> android/app/src/main/res/drawable/rn_edit_text_material.xml
+        echo '            <stroke android:width="1dp" android:color="@android:color/darker_gray" />' >> android/app/src/main/res/drawable/rn_edit_text_material.xml
+        echo '        </shape>' >> android/app/src/main/res/drawable/rn_edit_text_material.xml
+        echo '    </item>' >> android/app/src/main/res/drawable/rn_edit_text_material.xml
+        echo '    <item>' >> android/app/src/main/res/drawable/rn_edit_text_material.xml
+        echo '        <shape android:shape="rectangle">' >> android/app/src/main/res/drawable/rn_edit_text_material.xml
+        echo '            <solid android:color="@android:color/transparent" />' >> android/app/src/main/res/drawable/rn_edit_text_material.xml
+        echo '            <stroke android:width="1dp" android:color="@android:color/black" />' >> android/app/src/main/res/drawable/rn_edit_text_material.xml
+        echo '        </shape>' >> android/app/src/main/res/drawable/rn_edit_text_material.xml
+        echo '    </item>' >> android/app/src/main/res/drawable/rn_edit_text_material.xml
+        echo '</selector>' >> android/app/src/main/res/drawable/rn_edit_text_material.xml
+        
         # Configure native dependencies for Android
         cd android && ./gradlew clean && cd ..
         
