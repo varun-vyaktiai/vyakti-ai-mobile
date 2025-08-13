@@ -208,11 +208,27 @@ jobs:
         org.gradle.caching=true
         EOF
 
-        # Fix React Native library namespaces and buildConfig
-        find node_modules -name "build.gradle" -path "*/react-native-*/android/build.gradle" -exec sed -i '/android {/a\    namespace "com.reactnative.placeholder"\n    buildFeatures {\n        buildConfig true\n    }' {} \;
+        # Fix ALL React Native library namespaces and buildConfig comprehensively
+        
+        # Generic fix for all react-native-* libraries
+        find node_modules -name "build.gradle" -path "*/react-native-*/android/build.gradle" -exec sed -i '/android {/a\    namespace "com.reactnative.library"\n    buildFeatures {\n        buildConfig true\n    }' {} \;
+        
+        # Fix @react-native-voice/voice specifically
+        find node_modules -name "build.gradle" -path "*/@react-native-voice*/android/build.gradle" -exec sed -i '/android {/a\    namespace "com.wenkesj.voice"\n    buildFeatures {\n        buildConfig true\n    }' {} \;
+        
+        # Fix other scoped packages
+        find node_modules -name "build.gradle" -path "*/@react-native*/android/build.gradle" -exec sed -i '/android {/a\    namespace "com.reactnative.scoped"\n    buildFeatures {\n        buildConfig true\n    }' {} \;
+        
+        # Specific library fixes
         find node_modules -name "build.gradle" -path "*/react-native-sound/android/build.gradle" -exec sed -i '/android {/a\    namespace "com.zmxv.RNSound"\n    buildFeatures {\n        buildConfig true\n    }' {} \;
         find node_modules -name "build.gradle" -path "*/react-native-vector-icons/android/build.gradle" -exec sed -i '/android {/a\    namespace "com.oblador.vectoricons"\n    buildFeatures {\n        buildConfig true\n    }' {} \;
         find node_modules -name "build.gradle" -path "*/react-native-device-info/android/build.gradle" -exec sed -i '/android {/a\    namespace "com.learnium.RNDeviceInfo"\n    buildFeatures {\n        buildConfig true\n    }' {} \;
+        find node_modules -name "build.gradle" -path "*/react-native-permissions/android/build.gradle" -exec sed -i '/android {/a\    namespace "com.zoontek.rnpermissions"\n    buildFeatures {\n        buildConfig true\n    }' {} \;
+        find node_modules -name "build.gradle" -path "*/react-native-screens/android/build.gradle" -exec sed -i '/android {/a\    namespace "com.swmansion.rnscreens"\n    buildFeatures {\n        buildConfig true\n    }' {} \;
+        find node_modules -name "build.gradle" -path "*/react-native-safe-area-context/android/build.gradle" -exec sed -i '/android {/a\    namespace "com.th3rdwave.safeareacontext"\n    buildFeatures {\n        buildConfig true\n    }' {} \;
+        
+        # Fix any remaining Android library build.gradle files
+        find node_modules -name "build.gradle" -path "*/android/build.gradle" -exec grep -l "apply plugin.*android.library" {} \; | xargs -I {} sed -i '/android {/a\    namespace "com.reactnative.fallback"\n    buildFeatures {\n        buildConfig true\n    }' {}
 
         # Create debug keystore
         keytool -genkey -v -keystore android/app/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
