@@ -415,8 +415,11 @@ jobs:
             echo '{"name": "VyaktiAI", "displayName": "Vyakti AI"}' > app.json
         fi
         
-        # Fix App.js imports to remove Expo dependencies and avoid duplicates
-        sed -i "s/import { View, Text, Alert, Platform } from 'react-native';/import { View, Text, Alert, Platform, PermissionsAndroid } from 'react-native';/" App.js
+        # Fix App.js imports to remove all incompatible dependencies
+        sed -i "s/import { StatusBar } from 'expo-status-bar';/\/\/ StatusBar removed - using React Native StatusBar/" App.js
+        sed -i "s/import { createStackNavigator } from '@react-navigation\/stack';/import { createNativeStackNavigator } from '@react-navigation\/native-stack';/" App.js
+        sed -i "s/createStackNavigator/createNativeStackNavigator/g" App.js
+        sed -i "s/import { View, Text, Alert, Platform } from 'react-native';/import { View, Text, Alert, Platform, PermissionsAndroid, StatusBar } from 'react-native';/" App.js
         sed -i "/import \* as Permissions from 'expo-permissions';/d" App.js
         sed -i "s/import { Audio } from 'expo-av';/\/\/ Audio functionality via react-native-audio-recorder-player/" App.js
         sed -i "s/Permissions\.CAMERA/PermissionsAndroid.PERMISSIONS.CAMERA/g" App.js
