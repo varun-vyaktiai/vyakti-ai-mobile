@@ -250,16 +250,8 @@ jobs:
         find node_modules/react-native/ReactAndroid -name "*.aar" -exec cp {} android/app/libs/ \; 2>/dev/null || true
         find node_modules/react-native/ReactAndroid -name "*.aar" -exec cp {} android/libs/ \; 2>/dev/null || true
         
-        # Download React Native AAR from Maven if local copies don't exist
-        cd android
-        if [ ! -f "app/libs/react-native-0.73.6.aar" ]; then
-            wget -O app/libs/react-native-0.73.6.aar "https://repo1.maven.org/maven2/com/facebook/react/react-native/0.73.6/react-native-0.73.6.aar" || true
-            cp app/libs/react-native-0.73.6.aar libs/ || true
-        fi
-        cd ..
-        
         # Add flatDir repository to main build.gradle for all projects
-        sed -i '/allprojects {/,/}/ { /repositories {/a\        flatDir { dirs "$rootDir/libs", "$rootDir/app/libs" } } ' android/build.gradle
+        sed -i '/repositories {/a\        flatDir { dirs "$rootDir/libs", "$rootDir/app/libs" }' android/build.gradle
         
         # Add the React Native dependency as a file-based implementation to app build.gradle
         echo "" >> android/app/build.gradle
