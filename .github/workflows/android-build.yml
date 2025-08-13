@@ -388,15 +388,13 @@ jobs:
     - name: Fix Metro config and create bundle
       run: |
         # Fix metro.config.js to work without Expo
-        cat > metro.config.js << 'EOF'
-const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config');
-
-const defaultConfig = getDefaultConfig(__dirname);
-
-const config = {};
-
-module.exports = mergeConfig(defaultConfig, config);
-EOF
+        echo "const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config');" > metro.config.js
+        echo "" >> metro.config.js
+        echo "const defaultConfig = getDefaultConfig(__dirname);" >> metro.config.js
+        echo "" >> metro.config.js
+        echo "const config = {};" >> metro.config.js
+        echo "" >> metro.config.js
+        echo "module.exports = mergeConfig(defaultConfig, config);" >> metro.config.js
         
         mkdir -p android/app/src/main/assets
         npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res/
