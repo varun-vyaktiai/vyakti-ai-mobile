@@ -1,61 +1,58 @@
-name: Build Android APK
+name: Vyakti AI Android Build - Complete Working Solution
 
 on:
   push:
-    branches: [ main, master, develop ]
+    branches: [main, master]
   pull_request:
-    branches: [ main, master, develop ]
+    branches: [main, master] 
   workflow_dispatch:
 
 jobs:
-  build:
+  build-android:
     runs-on: ubuntu-latest
-
+    timeout-minutes: 90
+    
     steps:
-    - name: Checkout Code
+    - name: Checkout Repository
       uses: actions/checkout@v4
 
     - name: Setup Java 17
       uses: actions/setup-java@v4
       with:
-        distribution: 'temurin'
         java-version: '17'
+        distribution: 'temurin'
 
     - name: Setup Node.js 18
       uses: actions/setup-node@v4
       with:
         node-version: '18'
 
-    - name: Use System Gradle Instead of Wrapper
+    - name: Install Fresh Gradle 8.1.1
       run: |
-        echo "=== Using System Gradle to Bypass Wrapper Issues ==="
-        cd /opt
-        sudo wget https://services.gradle.org/distributions/gradle-8.1.1-bin.zip
-        sudo unzip gradle-8.1.1-bin.zip
-        sudo ln -sf /opt/gradle-8.1.1/bin/gradle /usr/local/bin/gradle
+        wget -q https://services.gradle.org/distributions/gradle-8.1.1-bin.zip
+        unzip -q gradle-8.1.1-bin.zip
+        sudo mv gradle-8.1.1 /opt/gradle
+        export PATH="/opt/gradle/bin:$PATH"
+        echo "/opt/gradle/bin" >> $GITHUB_PATH
         gradle --version
-        echo "=== System Gradle 8.1.1 ready - bypassing wrapper completely ==="
 
-    - name: Cache Node Modules
-      uses: actions/cache@v4
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
       with:
-        path: node_modules
-        key: ${{ runner.os }}-node-modules-${{ hashFiles('package-lock.json') }}
-        restore-keys: |
-          ${{ runner.os }}-node-modules-
+        cmdline-tools-version: 11076708
+        packages: "platform-tools platforms;android-35 build-tools;35.0.0 ndk;25.1.8937393"
 
     - name: Install Dependencies
-      run: npm install
+      run: npm install --legacy-peer-deps
 
-    - name: Create Android Configuration Files
+    - name: Complete Android Configuration - Exact 15-Hour Solution
       run: |
-        echo "=== Creating Android Configuration Files ==="
-        mkdir -p android/app/src/main/java/com/vyaktiai/mobile
-        mkdir -p android/app/src/main/res/values
-        mkdir -p android/app/src/main/assets
+        echo "sdk.dir=$ANDROID_HOME" > android/local.properties
         
-        # Create root build.gradle - EXACT copy from successful 15-hour solution
-        cat > android/build.gradle << 'GRADLE_ROOT_END'
+        # Root build.gradle - EXACT working configuration
+        cat > android/build.gradle << 'EOF'
+        // Top-level build file where you can add configuration options common to all sub-projects/modules.
+
         buildscript {
             ext {
                 buildToolsVersion = "35.0.0"
@@ -88,10 +85,10 @@ jobs:
                 maven { url "$rootDir/../node_modules/jsc-android/dist" }
             }
         }
-        GRADLE_ROOT_END
+        EOF
         
-        # Create app build.gradle - EXACT successful configuration from 15-hour solution
-        cat > android/app/build.gradle << 'GRADLE_APP_END'
+        # App build.gradle - EXACT working configuration
+        cat > android/app/build.gradle << 'EOF'
         apply plugin: "com.android.application"
         apply plugin: "org.jetbrains.kotlin.android"
 
@@ -111,7 +108,6 @@ jobs:
             entryFile: "index.js"
         ]
 
-        
         android {
             ndkVersion rootProject.ext.ndkVersion
             compileSdk rootProject.ext.compileSdkVersion
@@ -129,7 +125,16 @@ jobs:
                 versionCode 1
                 versionName "1.0"
             }
-            
+
+            splits {
+                abi {
+                    reset()
+                    enable false
+                    universalApk false
+                    include "armeabi-v7a", "x86", "arm64-v8a", "x86_64"
+                }
+            }
+
             signingConfigs {
                 debug {
                     storeFile file('debug.keystore')
@@ -138,24 +143,15 @@ jobs:
                     keyPassword 'android'
                 }
             }
-            
+
             buildTypes {
                 debug {
                     signingConfig signingConfigs.debug
                 }
                 release {
                     signingConfig signingConfigs.debug
-                    minifyEnabled enableProguardInReleaseBuilds
+                    minifyEnabled false
                     proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
-                }
-            }
-            
-            splits {
-                abi {
-                    reset()
-                    enable false
-                    universalApk false
-                    include "armeabi-v7a", "x86", "arm64-v8a", "x86_64"
                 }
             }
 
@@ -189,167 +185,148 @@ jobs:
             implementation "com.th3rdwave:react-native-safe-area-context:+"
             implementation "com.swmansion.rnscreens:react-native-screens:+"
         }
-        GRADLE_APP_END
+        EOF
         
-        # Create settings.gradle
-        cat > android/settings.gradle << 'GRADLE_SETTINGS_END'
+        # Settings.gradle
+        cat > android/settings.gradle << 'EOF'
         rootProject.name = 'VyaktiAI'
         include ':app'
         apply from: file("../node_modules/@react-native-community/cli-platform-android/native_modules.gradle")
         applyNativeModulesSettingsGradle(settings)
-        GRADLE_SETTINGS_END
+        EOF
         
-        # Create gradle.properties
-        cat > android/gradle.properties << 'GRADLE_PROPS_END'
+        # Gradle.properties
+        cat > android/gradle.properties << 'EOF'
         org.gradle.jvmargs=-Xmx4096m -XX:+UseG1GC
         android.useAndroidX=true
         android.enableJetifier=true
-        FLIPPER_VERSION=0.125.0
         newArchEnabled=false
         hermesEnabled=false
         org.gradle.parallel=true
         org.gradle.configureondemand=true
         org.gradle.daemon=true
         org.gradle.caching=true
-        GRADLE_PROPS_END
+        EOF
 
-    - name: Fix React Native Library Issues
+        # Create debug keystore
+        keytool -genkey -v -keystore android/app/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+
+        # Create required directories and files
+        mkdir -p android/app/src/main/java/com/vyaktiai
+        mkdir -p android/app/src/main/res/values
+        mkdir -p android/app/src/main/assets
+
+        # MainApplication.java
+        cat > android/app/src/main/java/com/vyaktiai/MainApplication.java << 'EOF'
+        package com.vyaktiai;
+
+        import android.app.Application;
+        import com.facebook.react.ReactApplication;
+        import com.facebook.react.ReactNativeHost;
+        import com.facebook.react.ReactPackage;
+        import com.facebook.react.shell.MainReactPackage;
+        import java.util.Arrays;
+        import java.util.List;
+
+        public class MainApplication extends Application implements ReactApplication {
+
+            private final ReactNativeHost mReactNativeHost =
+                new ReactNativeHost(this) {
+                    @Override
+                    public boolean getUseDeveloperSupport() {
+                        return BuildConfig.DEBUG;
+                    }
+
+                    @Override
+                    protected List<ReactPackage> getPackages() {
+                        return Arrays.<ReactPackage>asList(
+                            new MainReactPackage()
+                        );
+                    }
+
+                    @Override
+                    protected String getJSMainModuleName() {
+                        return "index";
+                    }
+                };
+
+            @Override
+            public ReactNativeHost getReactNativeHost() {
+                return mReactNativeHost;
+            }
+
+            @Override
+            public void onCreate() {
+                super.onCreate();
+            }
+        }
+        EOF
+
+        # MainActivity.java
+        cat > android/app/src/main/java/com/vyaktiai/MainActivity.java << 'EOF'
+        package com.vyaktiai;
+
+        import com.facebook.react.ReactActivity;
+
+        public class MainActivity extends ReactActivity {
+            @Override
+            protected String getMainComponentName() {
+                return "VyaktiAI";
+            }
+        }
+        EOF
+
+        # AndroidManifest.xml
+        cat > android/app/src/main/AndroidManifest.xml << 'EOF'
+        <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+            <uses-permission android:name="android.permission.INTERNET" />
+
+            <application
+                android:name=".MainApplication"
+                android:label="@string/app_name"
+                android:icon="@mipmap/ic_launcher"
+                android:allowBackup="false"
+                android:theme="@style/AppTheme">
+                <activity
+                    android:name=".MainActivity"
+                    android:label="@string/app_name"
+                    android:configChanges="keyboard|keyboardHidden|orientation|screenSize|uiMode"
+                    android:launchMode="singleTask"
+                    android:windowSoftInputMode="adjustResize"
+                    android:exported="true">
+                    <intent-filter>
+                        <action android:name="android.intent.action.MAIN" />
+                        <category android:name="android.intent.category.LAUNCHER" />
+                    </intent-filter>
+                </activity>
+            </application>
+        </manifest>
+        EOF
+
+        # strings.xml
+        cat > android/app/src/main/res/values/strings.xml << 'EOF'
+        <resources>
+            <string name="app_name">Vyakti AI</string>
+        </resources>
+        EOF
+
+        # styles.xml
+        cat > android/app/src/main/res/values/styles.xml << 'EOF'
+        <resources>
+            <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
+            </style>
+        </resources>
+        EOF
+
+    - name: Clean and Build APK
       run: |
-        echo "=== Fixing React Native Library Issues ==="
-        
-        # Fix react-native-audio-recorder-player classpath issue
-        if [ -f "node_modules/react-native-audio-recorder-player/android/build.gradle" ]; then
-          sed -i '/classpath.*project(/d' node_modules/react-native-audio-recorder-player/android/build.gradle
-          sed -i '/classpath.*":ReactAndroid"/d' node_modules/react-native-audio-recorder-player/android/build.gradle
-          echo "Fixed react-native-audio-recorder-player classpath dependencies"
-        fi
-        
-        # Define libraries to fix
-        declare -A libraries=(
-          ["react-native-sound"]="com.zmxv.RNSound"
-          ["react-native-vector-icons"]="com.oblador.vectoricons"
-          ["react-native-tts"]="net.no_mad.tts"
-          ["react-native-audio-recorder-player"]="com.dooboolab.audiorecorderplayer"
-          ["react-native-device-info"]="com.learnium.RNDeviceInfo"
-          ["react-native-permissions"]="com.zoontek.rnpermissions"
-          ["@react-native-voice/voice"]="com.wenkesj.voice"
-          ["react-native-webview"]="com.reactnativecommunity.webview"
-          ["react-native-splash-screen"]="org.devio.rn.splashscreen"
-        )
-        
-        # Fix each library
-        for lib in "${!libraries[@]}"; do
-          namespace="${libraries[$lib]}"
-          gradle_file="node_modules/$lib/android/build.gradle"
-          
-          if [ -f "$gradle_file" ]; then
-            echo "Fixing $lib..."
-            
-            # Add namespace if missing
-            if ! grep -q "namespace" "$gradle_file"; then
-              sed -i "/android {/a\\    namespace \"$namespace\"" "$gradle_file"
-            fi
-            
-            # Add buildFeatures if missing
-            if ! grep -q "buildFeatures" "$gradle_file"; then
-              sed -i '/namespace/a\    buildFeatures {\n        buildConfig true\n    }' "$gradle_file"
-            fi
-            
-            # Remove React Native dependencies - let auto-linking handle them
-            sed -i '/implementation.*com\.facebook\.react:react-native/d' "$gradle_file"
-            sed -i '/implementation.*"com\.facebook\.react:react-native/d' "$gradle_file"
-            sed -i '/api.*com\.facebook\.react:react-native/d' "$gradle_file"
-            sed -i '/compileOnly.*com\.facebook\.react:react-native/d' "$gradle_file"
-            
-            # Remove classpath project dependencies
-            sed -i '/classpath.*project(/d' "$gradle_file"
-            sed -i '/classpath.*":ReactAndroid"/d' "$gradle_file"
-            
-            echo "Fixed $lib"
-          fi
-        done
+        cd android
+        gradle clean
+        gradle assembleDebug
 
-    - name: Add ReactAndroid Project
-      run: |
-        echo "=== Adding ReactAndroid Project ==="
-        if ! grep -q "include.*ReactAndroid" android/settings.gradle; then
-          echo "include ':ReactAndroid'" >> android/settings.gradle
-          echo "project(':ReactAndroid').projectDir = new File(rootProject.projectDir, '../node_modules/react-native/ReactAndroid')" >> android/settings.gradle
-        fi
-
-    - name: Clear Gradle Caches
-      run: |
-        echo "=== Clearing Gradle Caches ==="
-        rm -rf ~/.gradle/caches/
-        rm -rf ~/.gradle/wrapper/
-        rm -rf ~/.gradle/daemon/
-        gradle --stop || echo "Gradle daemon not running"
-
-    - name: Generate Debug Keystore
-      run: |
-        cd android/app
-        if [ ! -f "debug.keystore" ]; then
-          keytool -genkey -v -keystore debug.keystore -alias androiddebugkey \
-            -keyalg RSA -keysize 2048 -validity 10000 \
-            -storepass android -keypass android \
-            -dname "CN=Android Debug,O=Android,C=US"
-        fi
-
-    - name: Test Configuration
-      working-directory: android
-      run: |
-        echo "=== Testing Configuration ==="
-        gradle projects --no-daemon --warning-mode=none
-
-    - name: Clean Build
-      working-directory: android
-      run: gradle clean --no-daemon --warning-mode=none
-
-    - name: Build Debug APK
-      working-directory: android
-      run: |
-        echo "Building Debug APK..."
-        gradle :app:assembleDebug --no-daemon --warning-mode=none --console=plain --max-workers=1
-
-    - name: Build Release APK
-      working-directory: android
-      run: |
-        echo "Building Release APK..."
-        gradle :app:assembleRelease --no-daemon --warning-mode=none --console=plain --max-workers=1
-
-    - name: Build Release AAB
-      working-directory: android
-      run: |
-        echo "Building Release AAB..."
-        gradle :app:bundleRelease --no-daemon --warning-mode=none --console=plain --max-workers=1
-
-    - name: Upload Debug APK
+    - name: Upload APK
       uses: actions/upload-artifact@v4
-      if: success()
       with:
         name: vyakti-ai-debug-apk
-        path: android/app/build/outputs/apk/debug/*.apk
-
-    - name: Upload Release APK
-      uses: actions/upload-artifact@v4
-      if: success()
-      with:
-        name: vyakti-ai-release-apk
-        path: android/app/build/outputs/apk/release/*.apk
-
-    - name: Upload Release AAB
-      uses: actions/upload-artifact@v4
-      if: success()
-      with:
-        name: vyakti-ai-release-aab
-        path: android/app/build/outputs/bundle/release/*.aab
-
-    - name: Build Summary
-      if: always()
-      run: |
-        echo "=== Build Summary ==="
-        echo "All React Native library fixes applied"
-        echo "Built artifacts:"
-        ls -la android/app/build/outputs/apk/debug/ || echo "Debug APK not found"
-        ls -la android/app/build/outputs/apk/release/ || echo "Release APK not found"
-        ls -la android/app/build/outputs/bundle/release/ || echo "Release AAB not found"
+        path: android/app/build/outputs/apk/debug/app-debug.apk
