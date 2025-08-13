@@ -302,27 +302,58 @@ jobs:
         
         echo "=== All React Native library namespace and buildConfig issues fixed ==="
         
-        # CRITICAL FIX: Remove project dependencies from script classpath
+        # CRITICAL FIX: Replace problematic buildscript classpath dependencies
         echo "=== Fixing Gradle Script Classpath Issues ==="
         
-        # Fix react-native-audio-recorder-player classpath issue specifically
+        # Fix react-native-audio-recorder-player classpath issue specifically 
         audio_gradle="node_modules/react-native-audio-recorder-player/android/build.gradle"
         if [ -f "$audio_gradle" ]; then
           echo "Fixing react-native-audio-recorder-player classpath dependencies..."
-          # Remove any project dependencies from script classpath
-          sed -i '/classpath.*project(/d' "$audio_gradle"
-          sed -i '/classpath.*":ReactAndroid"/d' "$audio_gradle"
-          sed -i 's/classpath project.*$/\/\/ Removed project classpath dependency/g' "$audio_gradle"
-          echo "Fixed classpath issue in react-native-audio-recorder-player"
+          
+          # Replace entire buildscript block to remove project dependencies
+          cat > temp_audio_buildscript.txt << 'EOF'
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.1.1'
+        // Removed project classpath dependency - using auto-linking instead
+    }
+}
+EOF
+          
+          # Replace buildscript block if it contains project dependencies
+          if grep -q "classpath.*project(" "$audio_gradle"; then
+            # Extract everything except buildscript block
+            sed -i '/^buildscript {/,/^}/d' "$audio_gradle"
+            # Prepend new buildscript block
+            cat temp_audio_buildscript.txt "$audio_gradle" > temp_merged.gradle
+            mv temp_merged.gradle "$audio_gradle"
+            echo "Replaced buildscript block in react-native-audio-recorder-player"
+          fi
+          
+          rm -f temp_audio_buildscript.txt
         fi
         
-        # Apply same fix to all other libraries that might have this issue
+        # Apply comprehensive classpath fixes to all React Native libraries
         for lib in "${!RN_LIBRARIES[@]}"; do
           gradle_file="node_modules/$lib/android/build.gradle"
           if [ -f "$gradle_file" ]; then
-            # Remove project classpath dependencies that cause script classpath errors
+            echo "Checking classpath dependencies in $lib..."
+            
+            # Remove any problematic classpath lines entirely
             sed -i '/classpath.*project(/d' "$gradle_file"
             sed -i '/classpath.*":ReactAndroid"/d' "$gradle_file"
+            sed -i '/classpath.*rootProject/d' "$gradle_file"
+            
+            # Replace with safe alternatives if buildscript exists
+            if grep -q "buildscript" "$gradle_file" && grep -q "classpath.*com\.facebook\.react" "$gradle_file"; then
+              sed -i 's/classpath.*com\.facebook\.react.*/classpath "com.facebook.react:react-native-gradle-plugin"/g' "$gradle_file"
+            fi
+            
+            echo "Fixed classpath issues in $lib"
           fi
         done
         
