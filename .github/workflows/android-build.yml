@@ -385,8 +385,14 @@ jobs:
         </resources>
         EOF
 
-    - name: Fix Metro config and create bundle
+    - name: Fix Babel config and Metro bundle
       run: |
+        # Create clean babel.config.js without reanimated plugin
+        echo "module.exports = {" > babel.config.js
+        echo "  presets: ['@react-native/babel-preset']," >> babel.config.js
+        echo "  plugins: []" >> babel.config.js
+        echo "};" >> babel.config.js
+        
         # Fix metro.config.js to work without Expo
         echo "const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config');" > metro.config.js
         echo "" >> metro.config.js
@@ -409,6 +415,10 @@ jobs:
             echo '{"name": "VyaktiAI", "displayName": "Vyakti AI"}' > app.json
         fi
         
+        # Clear Metro cache and create bundle
+        npx react-native start --reset-cache &
+        sleep 5
+        pkill -f metro
         mkdir -p android/app/src/main/assets
         npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res/
         
@@ -425,4 +435,3 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: vyakti-ai-debug-apk
-        path: android/app/build/outputs/apk/debug/app-debug.apk
