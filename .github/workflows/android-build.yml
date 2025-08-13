@@ -545,16 +545,22 @@ jobs:
           sed -i '/android {/a\    namespace "com.reactnavigation.nativestack"' node_modules/@react-navigation/native-stack/android/build.gradle
         fi
         
-        # Install missing dependencies and add Maven Central for React Native
+        # Install missing dependencies and fix Maven repositories
         echo "Installing missing React Native gesture handler..."
         npm install react-native-gesture-handler@2.14.0
         
-        # Add Maven Central repository for React Native 0.73.6 resolution
-        echo "Adding Maven Central repository..."
-        if [ -f "android/build.gradle" ]; then
-          # Simple append of Maven Central after google()
-          sed -i '/google()/a\        mavenCentral()' android/build.gradle || true
-        fi
+        # Create minimal working build.gradle with proper repositories
+        echo "Fixing Android build configuration for React Native 0.73.6..."
+        cat >> android/build.gradle << 'EOF'
+
+// Additional repositories for React Native 0.73.6
+allprojects {
+    repositories {
+        mavenCentral()
+        maven { url "https://repo1.maven.org/maven2" }
+    }
+}
+EOF
 
         # Configure native dependencies for Android
         cd android && ./gradlew clean && cd ..
