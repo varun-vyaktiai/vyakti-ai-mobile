@@ -208,6 +208,12 @@ jobs:
         org.gradle.caching=true
         EOF
 
+        # Fix React Native library namespaces
+        find node_modules -name "build.gradle" -path "*/react-native-*/android/build.gradle" -exec sed -i '/android {/a\    namespace "com.reactnative.placeholder"' {} \;
+        find node_modules -name "build.gradle" -path "*/react-native-sound/android/build.gradle" -exec sed -i '/android {/a\    namespace "com.zmxv.RNSound"' {} \;
+        find node_modules -name "build.gradle" -path "*/react-native-vector-icons/android/build.gradle" -exec sed -i '/android {/a\    namespace "com.oblador.vectoricons"' {} \;
+        find node_modules -name "build.gradle" -path "*/react-native-device-info/android/build.gradle" -exec sed -i '/android {/a\    namespace "com.learnium.RNDeviceInfo"' {} \;
+
         # Create debug keystore
         keytool -genkey -v -keystore android/app/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
 
