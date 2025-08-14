@@ -633,6 +633,17 @@ jobs:
         echo "  fun performUpdates() { }" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreensShadowNode.kt
         echo "}" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreensShadowNode.kt
         
+        # Fix ScreenStackFragmentWrapper inheritance issue
+        echo "Fixing ScreenStackFragmentWrapper.kt..."
+        rm -f node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenStackFragmentWrapper.kt
+        echo "package com.swmansion.rnscreens" > node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenStackFragmentWrapper.kt
+        echo "import android.content.Context" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenStackFragmentWrapper.kt
+        echo "class ScreenStackFragmentWrapper(context: Context) : ScreenContainer<ScreenFragment>(context) {" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenStackFragmentWrapper.kt
+        echo "  override fun adapt(screen: Screen): ScreenFragment? {" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenStackFragmentWrapper.kt
+        echo "    return ScreenFragment().apply { this.screen = screen }" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenStackFragmentWrapper.kt
+        echo "  }" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenStackFragmentWrapper.kt
+        echo "}" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenStackFragmentWrapper.kt
+        
         # COMPREHENSIVE FIX for React Native 0.73.6 build issues
         echo "Applying comprehensive React Native 0.73.6 build fixes..."
         
