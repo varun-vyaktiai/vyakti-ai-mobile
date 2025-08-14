@@ -620,8 +620,9 @@ jobs:
         echo "package com.swmansion.rnscreens" > node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragmentWrapper.kt
         echo "import android.content.Context" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragmentWrapper.kt
         echo "class ScreenFragmentWrapper {" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragmentWrapper.kt
-        echo "  var container: ScreenContainer<ScreenFragment>? = null" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragmentWrapper.kt
-        echo "  fun setContainer(c: ScreenContainer<ScreenFragment>) { container = c }" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragmentWrapper.kt
+        echo "  private var _container: ScreenContainer<ScreenFragment>? = null" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragmentWrapper.kt
+        echo "  fun getContainer(): ScreenContainer<ScreenFragment>? { return _container }" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragmentWrapper.kt
+        echo "  fun setContainer(c: ScreenContainer<ScreenFragment>) { _container = c }" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragmentWrapper.kt
         echo "}" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragmentWrapper.kt
         
         echo "Fixing ScreensShadowNode.kt..."
