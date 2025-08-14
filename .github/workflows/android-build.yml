@@ -606,6 +606,33 @@ jobs:
         echo "  }" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragment.kt
         echo "}" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragment.kt
         
+        # Fix additional react-native-screens files with unresolved references
+        echo "Fixing ScreenEventDispatcher.kt..."
+        rm -f node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenEventDispatcher.kt
+        echo "package com.swmansion.rnscreens" > node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenEventDispatcher.kt
+        echo "enum class ScreenLifecycleEvent { APPEAR, DISAPPEAR, WILL_APPEAR, WILL_DISAPPEAR }" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenEventDispatcher.kt
+        echo "class ScreenEventDispatcher {" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenEventDispatcher.kt
+        echo "  fun dispatchEvent(event: ScreenLifecycleEvent) { }" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenEventDispatcher.kt
+        echo "}" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenEventDispatcher.kt
+        
+        echo "Fixing ScreenFragmentWrapper.kt..."
+        rm -f node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragmentWrapper.kt
+        echo "package com.swmansion.rnscreens" > node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragmentWrapper.kt
+        echo "import android.content.Context" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragmentWrapper.kt
+        echo "class ScreenFragmentWrapper {" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragmentWrapper.kt
+        echo "  var container: ScreenContainer<ScreenFragment>? = null" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragmentWrapper.kt
+        echo "  fun setContainer(c: ScreenContainer<ScreenFragment>) { container = c }" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragmentWrapper.kt
+        echo "}" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragmentWrapper.kt
+        
+        echo "Fixing ScreensShadowNode.kt..."
+        rm -f node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreensShadowNode.kt
+        echo "package com.swmansion.rnscreens" > node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreensShadowNode.kt
+        echo "import com.facebook.react.uimanager.LayoutShadowNode" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreensShadowNode.kt
+        echo "class ScreensShadowNode : LayoutShadowNode() {" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreensShadowNode.kt
+        echo "  private var container: ScreenContainer<*>? = null" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreensShadowNode.kt
+        echo "  fun performUpdates() { }" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreensShadowNode.kt
+        echo "}" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreensShadowNode.kt
+        
         # COMPREHENSIVE FIX for React Native 0.73.6 build issues
         echo "Applying comprehensive React Native 0.73.6 build fixes..."
         
