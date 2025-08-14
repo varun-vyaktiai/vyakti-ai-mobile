@@ -1373,17 +1373,24 @@ jobs:
         mkdir -p android/app/src/main/assets
         npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res/ --reset-cache
         
-    - name: Build Full-Featured APK with All Vyakti AI Features
+    - name: Build Production APK and AAB for Play Store
       run: |
         cd android
         
-        # Build the complete APK with all React Native libraries and features
-        echo "Building full Vyakti AI APK with all features..."
+        # Build production-ready APK and AAB for Google Play Store
+        echo "Building production Vyakti AI APK and AAB for Play Store submission..."
         gradle clean
-        gradle assembleDebug
+        gradle assembleRelease
+        gradle bundleRelease
 
-    - name: Upload APK
+    - name: Upload Release APK
       uses: actions/upload-artifact@v4
       with:
-        name: vyakti-ai-debug-apk
-        path: android/app/build/outputs/apk/debug/app-debug.apk
+        name: vyakti-ai-release-apk
+        path: android/app/build/outputs/apk/release/app-release.apk
+        
+    - name: Upload Release AAB (For Play Store)
+      uses: actions/upload-artifact@v4
+      with:
+        name: vyakti-ai-release-aab
+        path: android/app/build/outputs/bundle/release/app-release.aab
