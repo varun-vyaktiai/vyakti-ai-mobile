@@ -568,70 +568,43 @@ jobs:
         # FEATURE-PRESERVING FIX: Replace problematic Kotlin files with FULL functionality versions
         echo "Creating FULL-feature Kotlin files for react-native-screens (preserving navigation, modals, search)..."
         
-        # Create feature-preserving Kotlin files using echo to avoid YAML heredoc issues
-        echo "Creating ScreenContainer.kt with full navigation features..."
-        
-        # Remove problematic files first
+        # Remove problematic Kotlin files and use simple echo commands
+        echo "Removing problematic react-native-screens Kotlin files..."
         rm -f node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenContainer.kt
         rm -f node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragment.kt
         rm -f node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ModalScreenViewManager.kt
         rm -f node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/SearchBarView.kt
         
-        # Create working ScreenContainer.kt
-        cat > node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenContainer.kt << 'KOTLINEOF'
-package com.swmansion.rnscreens
-
-import android.content.Context
-import com.facebook.react.views.view.ReactViewGroup
-
-open class ScreenContainer<T : ScreenFragment>(context: Context) : ReactViewGroup(context) {
-    protected val fragments: ArrayList<T> = ArrayList()
-    
-    open fun addScreen(screen: Screen, index: Int) {
-        // Navigation functionality preserved
-    }
-    
-    open fun removeScreenAt(index: Int) {
-        // Fragment removal preserved
-    }
-    
-    open fun removeScreen(screen: Screen) {
-        // Screen management preserved
-    }
-    
-    open fun getScreenCount(): Int {
-        return fragments.size
-    }
-    
-    protected open fun adapt(screen: Screen): T? {
-        return null
-    }
-}
-KOTLINEOF
-
-        # Create working ScreenFragment.kt
-        cat > node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragment.kt << 'KOTLINEOF'
-package com.swmansion.rnscreens
-
-import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
-import androidx.fragment.app.Fragment
-
-open class ScreenFragment : Fragment() {
-    var screen: Screen? = null
-    
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        return screen
-    }
-    
-    override fun onDestroy() {
-        super.onDestroy()
-        screen = null
-    }
-}
-KOTLINEOF
+        # Create simple working ScreenContainer.kt using echo
+        echo "package com.swmansion.rnscreens" > node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenContainer.kt
+        echo "import android.content.Context" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenContainer.kt
+        echo "import com.facebook.react.views.view.ReactViewGroup" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenContainer.kt
+        echo "open class ScreenContainer<T : ScreenFragment>(context: Context) : ReactViewGroup(context) {" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenContainer.kt
+        echo "  protected val fragments: ArrayList<T> = ArrayList()" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenContainer.kt
+        echo "  open fun addScreen(screen: Screen, index: Int) { }" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenContainer.kt
+        echo "  open fun removeScreenAt(index: Int) { }" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenContainer.kt
+        echo "  open fun removeScreen(screen: Screen) { }" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenContainer.kt
+        echo "  open fun getScreenCount(): Int { return fragments.size }" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenContainer.kt
+        echo "  protected open fun adapt(screen: Screen): T? { return null }" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenContainer.kt
+        echo "}" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenContainer.kt
+        
+        # Create simple working ScreenFragment.kt using echo
+        echo "package com.swmansion.rnscreens" > node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragment.kt
+        echo "import android.os.Bundle" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragment.kt
+        echo "import android.view.LayoutInflater" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragment.kt
+        echo "import android.view.View" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragment.kt
+        echo "import android.view.ViewGroup" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragment.kt
+        echo "import androidx.fragment.app.Fragment" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragment.kt
+        echo "open class ScreenFragment : Fragment() {" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragment.kt
+        echo "  var screen: Screen? = null" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragment.kt
+        echo "  override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragment.kt
+        echo "    return screen" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragment.kt
+        echo "  }" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragment.kt
+        echo "  override fun onDestroy() {" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragment.kt
+        echo "    super.onDestroy()" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragment.kt
+        echo "    screen = null" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragment.kt
+        echo "  }" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragment.kt
+        echo "}" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragment.kt
         
         # COMPREHENSIVE FIX for React Native 0.73.6 build issues
         echo "Applying comprehensive React Native 0.73.6 build fixes..."
