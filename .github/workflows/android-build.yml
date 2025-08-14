@@ -656,103 +656,103 @@ jobs:
         echo "Creating essential Android application files to prevent crashes..."
         
         # Create MainApplication.java if missing
-        mkdir -p android/app/src/main/java/com/vyaktiai
-        if [ ! -f "android/app/src/main/java/com/vyaktiai/MainApplication.java" ]; then
+        mkdir -p android/app/src/main/java/com/vyaktiai/mobile
+        if [ ! -f "android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java" ]; then
           echo "Creating MainApplication.java..."
-          echo "package com.vyaktiai;" > android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "import android.app.Application;" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "import com.facebook.react.PackageList;" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "import com.facebook.react.ReactApplication;" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "import com.facebook.react.ReactNativeHost;" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "import com.facebook.react.ReactPackage;" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint;" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "import com.facebook.react.defaults.DefaultReactNativeHost;" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "import com.facebook.soloader.SoLoader;" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "import java.util.List;" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "public class MainApplication extends Application implements ReactApplication {" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "  private final ReactNativeHost mReactNativeHost =" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "      new DefaultReactNativeHost(this) {" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "        @Override" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "        public boolean getUseDeveloperSupport() {" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "          return BuildConfig.DEBUG;" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "        }" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "        @Override" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "        protected List<ReactPackage> getPackages() {" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "          List<ReactPackage> packages = new PackageList(this).getPackages();" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "          return packages;" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "        }" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "        @Override" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "        protected String getJSMainModuleName() {" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "          return \"index\";" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "        }" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "        @Override" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "        protected boolean isNewArchEnabled() {" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "          return BuildConfig.IS_NEW_ARCHITECTURE_ENABLED;" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "        }" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "        @Override" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "        protected Boolean isHermesEnabled() {" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "          return BuildConfig.IS_HERMES_ENABLED;" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "        }" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "      };" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "  @Override" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "  public ReactNativeHost getReactNativeHost() {" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "    return mReactNativeHost;" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "  }" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "  @Override" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "  public void onCreate() {" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "    super.onCreate();" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "    SoLoader.init(this, false);" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "    if (BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "      DefaultNewArchitectureEntryPoint.load();" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "    }" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "  }" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
-          echo "}" >> android/app/src/main/java/com/vyaktiai/MainApplication.java
+          echo "package com.vyaktiai.mobile;" > android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "import android.app.Application;" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "import com.facebook.react.PackageList;" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "import com.facebook.react.ReactApplication;" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "import com.facebook.react.ReactNativeHost;" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "import com.facebook.react.ReactPackage;" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint;" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "import com.facebook.react.defaults.DefaultReactNativeHost;" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "import com.facebook.soloader.SoLoader;" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "import java.util.List;" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "public class MainApplication extends Application implements ReactApplication {" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "  private final ReactNativeHost mReactNativeHost =" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "      new DefaultReactNativeHost(this) {" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "        @Override" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "        public boolean getUseDeveloperSupport() {" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "          return BuildConfig.DEBUG;" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "        }" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "        @Override" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "        protected List<ReactPackage> getPackages() {" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "          List<ReactPackage> packages = new PackageList(this).getPackages();" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "          return packages;" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "        }" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "        @Override" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "        protected String getJSMainModuleName() {" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "          return \"index\";" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "        }" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "        @Override" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "        protected boolean isNewArchEnabled() {" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "          return BuildConfig.IS_NEW_ARCHITECTURE_ENABLED;" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "        }" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "        @Override" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "        protected Boolean isHermesEnabled() {" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "          return BuildConfig.IS_HERMES_ENABLED;" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "        }" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "      };" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "  @Override" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "  public ReactNativeHost getReactNativeHost() {" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "    return mReactNativeHost;" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "  }" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "  @Override" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "  public void onCreate() {" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "    super.onCreate();" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "    SoLoader.init(this, false);" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "    if (BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "      DefaultNewArchitectureEntryPoint.load();" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "    }" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "  }" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
+          echo "}" >> android/app/src/main/java/com/vyaktiai/mobile/MainApplication.java
         fi
         
         # Create MainActivity.java if missing
-        if [ ! -f "android/app/src/main/java/com/vyaktiai/MainActivity.java" ]; then
+        if [ ! -f "android/app/src/main/java/com/vyaktiai/mobile/MainActivity.java" ]; then
           echo "Creating MainActivity.java..."
-          echo "package com.vyaktiai;" > android/app/src/main/java/com/vyaktiai/MainActivity.java
-          echo "" >> android/app/src/main/java/com/vyaktiai/MainActivity.java
-          echo "import com.facebook.react.ReactActivity;" >> android/app/src/main/java/com/vyaktiai/MainActivity.java
-          echo "import com.facebook.react.ReactActivityDelegate;" >> android/app/src/main/java/com/vyaktiai/MainActivity.java
-          echo "import com.facebook.react.ReactRootView;" >> android/app/src/main/java/com/vyaktiai/MainActivity.java
-          echo "import org.devio.rn.splashscreen.SplashScreen;" >> android/app/src/main/java/com/vyaktiai/MainActivity.java
-          echo "import android.os.Bundle;" >> android/app/src/main/java/com/vyaktiai/MainActivity.java
-          echo "" >> android/app/src/main/java/com/vyaktiai/MainActivity.java
-          echo "public class MainActivity extends ReactActivity {" >> android/app/src/main/java/com/vyaktiai/MainActivity.java
-          echo "" >> android/app/src/main/java/com/vyaktiai/MainActivity.java
-          echo "  @Override" >> android/app/src/main/java/com/vyaktiai/MainActivity.java
-          echo "  protected void onCreate(Bundle savedInstanceState) {" >> android/app/src/main/java/com/vyaktiai/MainActivity.java
-          echo "    SplashScreen.show(this);" >> android/app/src/main/java/com/vyaktiai/MainActivity.java
-          echo "    super.onCreate(savedInstanceState);" >> android/app/src/main/java/com/vyaktiai/MainActivity.java
-          echo "  }" >> android/app/src/main/java/com/vyaktiai/MainActivity.java
-          echo "" >> android/app/src/main/java/com/vyaktiai/MainActivity.java
-          echo "  @Override" >> android/app/src/main/java/com/vyaktiai/MainActivity.java
-          echo "  protected String getMainComponentName() {" >> android/app/src/main/java/com/vyaktiai/MainActivity.java
-          echo "    return \"VyaktiAI\";" >> android/app/src/main/java/com/vyaktiai/MainActivity.java
-          echo "  }" >> android/app/src/main/java/com/vyaktiai/MainActivity.java
-          echo "" >> android/app/src/main/java/com/vyaktiai/MainActivity.java
-          echo "  @Override" >> android/app/src/main/java/com/vyaktiai/MainActivity.java
-          echo "  protected ReactActivityDelegate createReactActivityDelegate() {" >> android/app/src/main/java/com/vyaktiai/MainActivity.java
-          echo "    return new ReactActivityDelegate(this, getMainComponentName()) {" >> android/app/src/main/java/com/vyaktiai/MainActivity.java
-          echo "      @Override" >> android/app/src/main/java/com/vyaktiai/MainActivity.java
-          echo "      protected ReactRootView createRootView() {" >> android/app/src/main/java/com/vyaktiai/MainActivity.java
-          echo "        ReactRootView reactRootView = new ReactRootView(MainActivity.this);" >> android/app/src/main/java/com/vyaktiai/MainActivity.java
-          echo "        return reactRootView;" >> android/app/src/main/java/com/vyaktiai/MainActivity.java
-          echo "      }" >> android/app/src/main/java/com/vyaktiai/MainActivity.java
-          echo "    };" >> android/app/src/main/java/com/vyaktiai/MainActivity.java
-          echo "  }" >> android/app/src/main/java/com/vyaktiai/MainActivity.java
-          echo "}" >> android/app/src/main/java/com/vyaktiai/MainActivity.java
+          echo "package com.vyaktiai.mobile;" > android/app/src/main/java/com/vyaktiai/mobile/MainActivity.java
+          echo "" >> android/app/src/main/java/com/vyaktiai/mobile/MainActivity.java
+          echo "import com.facebook.react.ReactActivity;" >> android/app/src/main/java/com/vyaktiai/mobile/MainActivity.java
+          echo "import com.facebook.react.ReactActivityDelegate;" >> android/app/src/main/java/com/vyaktiai/mobile/MainActivity.java
+          echo "import com.facebook.react.ReactRootView;" >> android/app/src/main/java/com/vyaktiai/mobile/MainActivity.java
+          echo "import org.devio.rn.splashscreen.SplashScreen;" >> android/app/src/main/java/com/vyaktiai/mobile/MainActivity.java
+          echo "import android.os.Bundle;" >> android/app/src/main/java/com/vyaktiai/mobile/MainActivity.java
+          echo "" >> android/app/src/main/java/com/vyaktiai/mobile/MainActivity.java
+          echo "public class MainActivity extends ReactActivity {" >> android/app/src/main/java/com/vyaktiai/mobile/MainActivity.java
+          echo "" >> android/app/src/main/java/com/vyaktiai/mobile/MainActivity.java
+          echo "  @Override" >> android/app/src/main/java/com/vyaktiai/mobile/MainActivity.java
+          echo "  protected void onCreate(Bundle savedInstanceState) {" >> android/app/src/main/java/com/vyaktiai/mobile/MainActivity.java
+          echo "    SplashScreen.show(this);" >> android/app/src/main/java/com/vyaktiai/mobile/MainActivity.java
+          echo "    super.onCreate(savedInstanceState);" >> android/app/src/main/java/com/vyaktiai/mobile/MainActivity.java
+          echo "  }" >> android/app/src/main/java/com/vyaktiai/mobile/MainActivity.java
+          echo "" >> android/app/src/main/java/com/vyaktiai/mobile/MainActivity.java
+          echo "  @Override" >> android/app/src/main/java/com/vyaktiai/mobile/MainActivity.java
+          echo "  protected String getMainComponentName() {" >> android/app/src/main/java/com/vyaktiai/mobile/MainActivity.java
+          echo "    return \"VyaktiAI\";" >> android/app/src/main/java/com/vyaktiai/mobile/MainActivity.java
+          echo "  }" >> android/app/src/main/java/com/vyaktiai/mobile/MainActivity.java
+          echo "" >> android/app/src/main/java/com/vyaktiai/mobile/MainActivity.java
+          echo "  @Override" >> android/app/src/main/java/com/vyaktiai/mobile/MainActivity.java
+          echo "  protected ReactActivityDelegate createReactActivityDelegate() {" >> android/app/src/main/java/com/vyaktiai/mobile/MainActivity.java
+          echo "    return new ReactActivityDelegate(this, getMainComponentName()) {" >> android/app/src/main/java/com/vyaktiai/mobile/MainActivity.java
+          echo "      @Override" >> android/app/src/main/java/com/vyaktiai/mobile/MainActivity.java
+          echo "      protected ReactRootView createRootView() {" >> android/app/src/main/java/com/vyaktiai/mobile/MainActivity.java
+          echo "        ReactRootView reactRootView = new ReactRootView(MainActivity.this);" >> android/app/src/main/java/com/vyaktiai/mobile/MainActivity.java
+          echo "        return reactRootView;" >> android/app/src/main/java/com/vyaktiai/mobile/MainActivity.java
+          echo "      }" >> android/app/src/main/java/com/vyaktiai/mobile/MainActivity.java
+          echo "    };" >> android/app/src/main/java/com/vyaktiai/mobile/MainActivity.java
+          echo "  }" >> android/app/src/main/java/com/vyaktiai/mobile/MainActivity.java
+          echo "}" >> android/app/src/main/java/com/vyaktiai/mobile/MainActivity.java
         fi
         
         # Create essential Android configuration files to prevent crashes
@@ -762,7 +762,7 @@ jobs:
         mkdir -p android/app/src/main/res/values
         echo "Creating AndroidManifest.xml..."
         echo "<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"" > android/app/src/main/AndroidManifest.xml
-        echo "    package=\"com.vyaktiai\">" >> android/app/src/main/AndroidManifest.xml
+        echo "    package=\"com.vyaktiai.mobile\">" >> android/app/src/main/AndroidManifest.xml
         echo "" >> android/app/src/main/AndroidManifest.xml
         echo "    <uses-permission android:name=\"android.permission.INTERNET\" />" >> android/app/src/main/AndroidManifest.xml
         echo "    <uses-permission android:name=\"android.permission.RECORD_AUDIO\" />" >> android/app/src/main/AndroidManifest.xml
@@ -878,9 +878,9 @@ jobs:
         echo '    ndkVersion rootProject.ext.ndkVersion' >> android/app/build.gradle
         echo '    compileSdk rootProject.ext.compileSdkVersion' >> android/app/build.gradle
         echo '' >> android/app/build.gradle
-        echo '    namespace "com.vyaktiai"' >> android/app/build.gradle
+        echo '    namespace "com.vyaktiai.mobile"' >> android/app/build.gradle
         echo '    defaultConfig {' >> android/app/build.gradle
-        echo '        applicationId "com.vyaktiai"' >> android/app/build.gradle
+        echo '        applicationId "com.vyaktiai.mobile"' >> android/app/build.gradle
         echo '        minSdkVersion rootProject.ext.minSdkVersion' >> android/app/build.gradle
         echo '        targetSdkVersion rootProject.ext.targetSdkVersion' >> android/app/build.gradle
         echo '        versionCode 1' >> android/app/build.gradle
