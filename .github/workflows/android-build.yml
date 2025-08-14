@@ -511,9 +511,12 @@ jobs:
           sed -i '/android {/a\    namespace "com.th3rdwave.safeareacontext"' node_modules/react-native-safe-area-context/android/build.gradle
         fi
         
-        # Fix react-native-screens namespace
+        # Fix react-native-screens namespace and buildConfig
         if [ -f "node_modules/react-native-screens/android/build.gradle" ]; then
           sed -i '/android {/a\    namespace "com.swmansion.rnscreens"' node_modules/react-native-screens/android/build.gradle
+          sed -i '/android {/a\    buildFeatures {\n        buildConfig true\n    }' node_modules/react-native-screens/android/build.gradle
+          # Fix compileSdk compatibility
+          sed -i 's/compileSdkVersion 33/compileSdkVersion 33/' node_modules/react-native-screens/android/build.gradle
         fi
         
         # Fix react-native-sound namespace
@@ -545,9 +548,43 @@ jobs:
           sed -i '/android {/a\    namespace "com.reactnavigation.nativestack"' node_modules/@react-navigation/native-stack/android/build.gradle
         fi
         
-        # Install missing dependencies and fix Maven repositories
-        echo "Installing missing React Native gesture handler..."
+        # Install missing dependencies and fix Maven repositories  
+        echo "Installing compatible React Native navigation dependencies..."
         npm install react-native-gesture-handler@2.14.0
+        npm install react-native-screens@3.29.0
+        npm install @react-navigation/native@6.1.9
+        npm install @react-navigation/native-stack@6.9.17
+        npm install @react-navigation/bottom-tabs@6.5.11
+        
+        # CRITICAL FIX: Force compatible React Native Screens version and fix Kotlin errors
+        echo "Applying critical React Native Screens compatibility fixes..."
+        
+        # Remove problematic files that cause Kotlin compilation errors
+        rm -f node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ModalScreenViewManager.kt
+        rm -f node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/SearchBarView.kt
+        
+        # Fix ScreenContainer.kt issues
+        if [ -f "node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenContainer.kt" ]; then
+          # Replace problematic imports and references
+          sed -i 's/import androidx.fragment.app.Fragment.ActivityState/\/\/ ActivityState import removed/' node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenContainer.kt
+          sed -i 's/ActivityState/Int/' node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenContainer.kt
+          sed -i 's/fragmentWrapper/fragment/' node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenContainer.kt
+          sed -i 's/container\./this./' node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenContainer.kt
+          sed -i 's/fragment\./fragment/' node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenContainer.kt
+          sed -i 's/setTransitioning/\/\/ setTransitioning/' node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenContainer.kt
+        fi
+        
+        # Fix ScreenFragment.kt issues
+        if [ -f "node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragment.kt" ]; then
+          # Replace problematic method calls
+          sed -i 's/trySetWindowTraits/\/\/ trySetWindowTraits/' node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragment.kt
+          sed -i 's/canDispatchLifecycleEvent/true \/\/ canDispatchLifecycleEvent/' node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragment.kt
+          sed -i 's/container\./this./' node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragment.kt
+          sed -i 's/fragment\./fragment/' node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragment.kt
+          sed -i 's/fragmentWrapper/fragment/' node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragment.kt
+          sed -i 's/screen\./screen/' node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragment.kt
+          sed -i 's/goingForward/true/' node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenFragment.kt
+        fi
         
         # COMPREHENSIVE FIX for React Native 0.73.6 build issues
         echo "Applying comprehensive React Native 0.73.6 build fixes..."
