@@ -645,6 +645,13 @@ jobs:
         echo "  }" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenStackFragmentWrapper.kt
         echo "}" >> node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenStackFragmentWrapper.kt
         
+        # Fix react-native-splash-screen R.style compilation error
+        echo "Fixing react-native-splash-screen R.style error..."
+        if [ -f "node_modules/react-native-splash-screen/android/src/main/java/org/devio/rn/splashscreen/SplashScreen.java" ]; then
+          sed -i 's/R\.style\.SplashScreen_Fullscreen/android.R.style.Theme_Black_NoTitleBar_Fullscreen/g' node_modules/react-native-splash-screen/android/src/main/java/org/devio/rn/splashscreen/SplashScreen.java
+          sed -i 's/R\.style\.SplashScreen_SplashTheme/android.R.style.Theme_Black_NoTitleBar/g' node_modules/react-native-splash-screen/android/src/main/java/org/devio/rn/splashscreen/SplashScreen.java
+        fi
+        
         # COMPREHENSIVE FIX for React Native 0.73.6 build issues
         echo "Applying comprehensive React Native 0.73.6 build fixes..."
         
